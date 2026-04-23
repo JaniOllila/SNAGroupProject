@@ -28,9 +28,31 @@ def read_fml_file(filename, resultname):
 
 
     df["date"] = df["datetime"].dt.date
-
+    
     daily_avg = df.groupby("date").mean(numeric_only=True)
 
-    print(daily_avg)
-    daily_avg.to_csv(resultname + "_avgs",index=True)
-    df.to_csv(resultname, index=False)
+    #print(daily_avg)
+    daily_avg.to_csv("Parsed_wind datasets/avgs_"+resultname ,index=True)
+    df.to_csv("Parsed_wind datasets/"+resultname, index=False)
+    return daily_avg
+
+
+
+def summary_Statics(dataframe):
+    #Creates summary of statics mean max for different wind info
+    #Half vibe coded
+
+    df = pd.read_csv("Parsed_wind datasets/"+dataframe)
+    print("for_sum")
+    print(df.dtypes)
+
+    features = df.groupby("Observation station").agg({
+        "Wind speed [m/s]": ["mean", "max", "std"],
+        "Maximum wind speed [m/s]": ["mean", "max"],
+        "Maximum gust speed [m/s]": ["mean", "max"]
+    })
+    
+    features.columns = ["_".join(col) for col in features.columns]
+    features = features.reset_index()  
+    return features
+    #print(features) 
