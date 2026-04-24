@@ -74,18 +74,32 @@ filename = "turbine_dataset"
 fields = ['location', 'latitude','longitude','station_id']
 
 csv_write(list_loc_lat_long_id, fields, filename)
+#print(list_loc_lat_long_id)
 
-daily_avg = read_wind_dataset("Hailuoto")
-
-print(list_loc_lat_long_id)
-
-#returns dataframe of summary statics
-Summary = fmi.summary_Statics(stations_dataset["Hailuoto"])
-print(Summary)
+#for key in stations_dataset:
+    #read_wind_dataset(key)
 
 turbines_df = pd.read_csv(filename)
 
-single_vector = pd.concat([turbines_df, Summary], axis=1)
+
+iter = turbines_df
+sums = []
+for index, row in iter.iterrows():
+    #print(row["station_id"])
+    sum = fmi.summary_Statics(stations_dataset[row["station_id"]])
+    sums.append(sum)
+    
+sums_df = pd.concat(sums)
+print(sums_df)
+turbines_df = turbines_df.reset_index(drop=True)
+sums_df = sums_df.reset_index(drop=True)
+single_vector = pd.concat([turbines_df, sums_df], axis=1)
+
+print(single_vector)
+
+
+
+#single_vector = pd.concat([turbines_df, Summary], axis=1)
 single_vector.drop("Observation station", axis=1, inplace=True)
 single_vector.to_csv("results", index=False)
 print(single_vector)
