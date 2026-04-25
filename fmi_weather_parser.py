@@ -20,7 +20,7 @@ def read_fml_file(filename, resultname):
     )
     df.drop(["Month", "Day", "Year", "Time [Local time]"], axis=1, inplace=True)
 
-    #daily avg with grouby first need to floats
+    #daily avg with grouby first need to float
     df["Maximum wind speed [m/s]"] = df["Maximum wind speed [m/s]"].apply(pd.to_numeric,errors="coerce")
     
 

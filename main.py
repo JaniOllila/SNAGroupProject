@@ -4,6 +4,7 @@ from geopy.distance import geodesic
 import csv
 import fmi_weather_parser as fmi
 from sklearn.preprocessing import StandardScaler
+import networkx as nx
 
 stations = {
     "Hailuoto":(65, 24.7),
@@ -25,6 +26,16 @@ stations_dataset = {
     "Olkiluoto":"Rauma_Kylmäpihlaja.csv",
     "Hamina":"Kotka_Rankki.csv",
     "Pori":"Pori_Tahkoluoto_harbour.csv",
+}
+id_to_stat = {
+    "Hailuoto":"Hailuoto Marjaniemi",
+    "Kokkola":"Kokkola Santahaka",
+    "Kokemaki":"Kokemäki Tulkkila",
+    "Tornio":"Tornio Kaakkuri",
+    "Oulu_lento":"Oulu airport",
+    "Olkiluoto":"Rauma Kylmäpihlaja",
+    "Hamina":"Kotka Rankki",
+    "Pori":"Pori Tahkoluoto harbour",
 }
 
 def distlatlon(coord1, coord2):
@@ -158,12 +169,18 @@ data2 = pd.concat(rolling_features_list)
 #print(data2)
 single_vector_rolling_derived = pd.concat([data, data2], axis=1)
 
-#print(single_vector_rolling_derived)
+print(single_vector_rolling_derived)
 
 
 scaler = StandardScaler()
 
 # drop non-numeric column
+ids = single_vector_rolling_derived["Observation station"]
+ids = ids.loc[:, ~ids.columns.duplicated()]
+
+print(type(ids["Observation station"]))
+print(ids["Observation station"].shape)
+
 X = single_vector_rolling_derived.drop(columns=["Observation station"])
 
 X_scaled = scaler.fit_transform(X)
@@ -175,19 +192,21 @@ print(X_scaled)
 
 
 #-----------------Task 6-----------------------------------
-#every data frame in list
+#every data frame in one dataframe
 
 ys = []
 for key in df_dict:
-    df_single = df_dict[key]
-    y = (df_single["Maximum gust speed [m/s]"].max() > 28).astype(int)
+    y = df_dict[key]
     ys.append(y)
 
-print(ys)
+df_all = pd.concat(ys)
+
+y = (df_all.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 28).astype(int)
+
 from sklearn.linear_model import LogisticRegression
 
 model = LogisticRegression()
-model.fit(X_scaled.drop(columns=["risk_score"], errors="ignore"), ys)
+model.fit(X_scaled.drop(columns=["risk_score"], errors="ignore"), y)
 
 risk_prob = model.predict_proba(X_scaled.drop(columns=["risk_score"], errors="ignore"))[:, 1]
 
@@ -195,8 +214,74 @@ X_scaled["risk_score_model"] = risk_prob
 
 print(X_scaled["risk_score_model"].describe())
 
-print(X_scaled)
 
+
+#-----------------Task 7-----------------------------------
+
+
+
+
+X_scaled["Observation station"] = ids["Observation station"].values
+
+iter = turbines_df
+
+list_ids = []
+for index, row in iter.iterrows():
+    st = id_to_stat[row["station_id"]]
+    turbines_df
+    list_ids.append(st)
+
+#df_temp = pd.concat(list_ids)
+#print(df_temp)
+turbines_df["Observation station"] = list_ids
+
+print(turbines_df)
+#turbines_df["risk_score_model"]
+
+df_combined = pd.merge(turbines_df, X_scaled, on="Observation station", how="inner")
+
+print(df_combined)
+
+
+G = nx.Graph()
+
+for _, row in df_combined.iterrows():
+    G.add_node(row["location"],
+    lat=row["latitude"],
+    long=row["longitude"])
+    #risk=row["risk_score_model"]
+
+
+print(G.nodes(data=True))
+#print(G.nodes["Huikku Hailuoto"])
+
+threshold = 200
+
+for i, row1 in df_combined.iterrows():
+    for j, row2 in df_combined.iterrows():
+        if i < j:
+            dist = distlatlon((row1["latitude"], row1["longitude"]),(row2["latitude"], row2["longitude"]))
+            if dist <= threshold:
+                G.add_edge(
+                    row1["location"],
+                    row2["location"],
+                    weight=dist
+                )
+        
+print(G.number_of_nodes())
+print(G.number_of_edges())
+print(G.nodes(data=True))
+
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10,7))
+
+#pos1 = nx.spring_layout(G, iterations=30)
+pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
+
+nx.draw(G,pos, with_labels=True, node_size=20)
+
+plt.show()
 #--------------was replaced by fmi weather parser---------->>>>>>>>>>>.------------------
 #filtered_df.to_csv("results_turbine", index=False)
 
