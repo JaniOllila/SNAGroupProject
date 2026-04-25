@@ -20,9 +20,9 @@ def read_fml_file(filename, resultname):
     )
     df.drop(["Month", "Day", "Year", "Time [Local time]"], axis=1, inplace=True)
 
-    #daily avg with grouby
+    #daily avg with grouby first need to floats
     df["Maximum wind speed [m/s]"] = df["Maximum wind speed [m/s]"].apply(pd.to_numeric,errors="coerce")
-    print(df.dtypes)
+    
 
     df["datetime"] = pd.to_datetime(df["datetime"])
 
@@ -34,7 +34,7 @@ def read_fml_file(filename, resultname):
     #print(daily_avg)
     daily_avg.to_csv("Parsed_wind datasets/avgs_"+resultname ,index=True)
     df.to_csv("Parsed_wind datasets/"+resultname, index=False)
-    return daily_avg
+    return df
 
 
 
@@ -59,8 +59,8 @@ def summary_Statics(dataframe):
 
 def derived_features(key):
     df = pd.read_csv("Parsed_wind datasets/"+key)
-    print("for_features")
-    print(df.dtypes)
+    #print("for_features")
+    #print(df.dtypes)
 
     features = df.groupby("Observation station").agg({
         "Wind speed [m/s]": ["mean", "std"],

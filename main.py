@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 
 stations = {
     "Hailuoto":(65, 24.7),
-    "Kokkola":(68, 23.1),
+    "Kokkola":(63.8, 23.1),
     "Kokemaki":(61.3, 22.3),
     "Tornio":(65.9,24.2),
     "Oulu_lento":(64.9,25.3),
@@ -43,7 +43,7 @@ def csv_write(datapair, fields, filename):
         writer.writerows(datapair)
 
 def read_wind_dataset(key):
-    fmi.read_fml_file("Wind datasets/" + stations_dataset[key],stations_dataset[key])
+    return fmi.read_fml_file("Wind datasets/" + stations_dataset[key],stations_dataset[key])
 
 #-----------------Task 1-2-----------------------------------
 data_turbine = pd.read_csv("global_power_plant_database.csv")
@@ -51,12 +51,12 @@ df = pd.DataFrame(data_turbine)
 filtered_df = df[df['country_long'].str.contains('Finland')]
 filtered_df = filtered_df[filtered_df['primary_fuel'].str.contains('Wind')]
 
-print(filtered_df.info())
+#print(filtered_df.info())
 
 #-----------------Task 3-----------------------------------
 
 vals = filtered_df.filter(items=["name","latitude","longitude"])
-print(vals.info())
+#print(vals.info())
 list_lat_long = vals.values.tolist()
 list_loc_lat_long_id = []
 for loc, lat, long in list_lat_long:
@@ -78,10 +78,10 @@ fields = ['location', 'latitude','longitude','station_id']
 
 csv_write(list_loc_lat_long_id, fields, filename)
 #print(list_loc_lat_long_id)
-
-#for key in stations_dataset:
-    #read_wind_dataset(key)
-
+df_dict = {}
+for key in stations_dataset:
+    df = read_wind_dataset(key)
+    df_dict.update({key:df})
 
 
 #-----------------Task 4-----------------------------------
@@ -96,14 +96,12 @@ for index, row in iter.iterrows():
     sums.append(sum)
     
 sums_df = pd.concat(sums)
-print(sums_df)
+#print(sums_df)
 
 turbines_df = turbines_df.reset_index(drop=True)
 sums_df = sums_df.reset_index(drop=True)
 
 single_vector = pd.concat([turbines_df, sums_df], axis=1)
-
-print(single_vector)
 
 #single_vector = pd.concat([turbines_df, Summary], axis=1)
 single_vector.drop("Observation station", axis=1, inplace=True)
@@ -143,6 +141,9 @@ def rolling_mean(path):
 
 derived_list = []
 rolling_features_list = []
+#print(turbines_df)
+iter = turbines_df.drop_duplicates(subset=["station_id"])
+
 for index, row in iter.iterrows():
     #print(row["station_id"])
     der = fmi.derived_features(stations_dataset[row["station_id"]])
@@ -157,16 +158,16 @@ data2 = pd.concat(rolling_features_list)
 #print(data2)
 single_vector_rolling_derived = pd.concat([data, data2], axis=1)
 
-print(single_vector_rolling_derived)
+#print(single_vector_rolling_derived)
 
 
 scaler = StandardScaler()
 
 # drop non-numeric column
 X = single_vector_rolling_derived.drop(columns=["Observation station"])
-print(X.shape)
+
 X_scaled = scaler.fit_transform(X)
-print(X_scaled)
+
 # back to DataFrame (optional but nice)
 X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
 
@@ -174,11 +175,27 @@ print(X_scaled)
 
 
 #-----------------Task 6-----------------------------------
+#every data frame in list
 
+ys = []
+for key in df_dict:
+    df_single = df_dict[key]
+    y = (df_single["Maximum gust speed [m/s]"].max() > 28).astype(int)
+    ys.append(y)
 
+print(ys)
+from sklearn.linear_model import LogisticRegression
 
+model = LogisticRegression()
+model.fit(X_scaled.drop(columns=["risk_score"], errors="ignore"), ys)
 
+risk_prob = model.predict_proba(X_scaled.drop(columns=["risk_score"], errors="ignore"))[:, 1]
 
+X_scaled["risk_score_model"] = risk_prob
+
+print(X_scaled["risk_score_model"].describe())
+
+print(X_scaled)
 
 #--------------was replaced by fmi weather parser---------->>>>>>>>>>>.------------------
 #filtered_df.to_csv("results_turbine", index=False)
