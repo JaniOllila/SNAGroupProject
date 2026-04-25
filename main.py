@@ -3,6 +3,7 @@ import datetime as dt
 from geopy.distance import geodesic
 import csv
 import fmi_weather_parser as fmi
+from sklearn.preprocessing import StandardScaler
 
 stations = {
     "Hailuoto":(65, 24.7),
@@ -44,13 +45,15 @@ def csv_write(datapair, fields, filename):
 def read_wind_dataset(key):
     fmi.read_fml_file("Wind datasets/" + stations_dataset[key],stations_dataset[key])
 
-
+#-----------------Task 1-2-----------------------------------
 data_turbine = pd.read_csv("global_power_plant_database.csv")
 df = pd.DataFrame(data_turbine)
 filtered_df = df[df['country_long'].str.contains('Finland')]
 filtered_df = filtered_df[filtered_df['primary_fuel'].str.contains('Wind')]
 
 print(filtered_df.info())
+
+#-----------------Task 3-----------------------------------
 
 vals = filtered_df.filter(items=["name","latitude","longitude"])
 print(vals.info())
@@ -79,8 +82,11 @@ csv_write(list_loc_lat_long_id, fields, filename)
 #for key in stations_dataset:
     #read_wind_dataset(key)
 
-turbines_df = pd.read_csv(filename)
 
+
+#-----------------Task 4-----------------------------------
+
+turbines_df = pd.read_csv(filename)
 
 iter = turbines_df
 sums = []
@@ -91,19 +97,90 @@ for index, row in iter.iterrows():
     
 sums_df = pd.concat(sums)
 print(sums_df)
+
 turbines_df = turbines_df.reset_index(drop=True)
 sums_df = sums_df.reset_index(drop=True)
+
 single_vector = pd.concat([turbines_df, sums_df], axis=1)
 
 print(single_vector)
-
-
 
 #single_vector = pd.concat([turbines_df, Summary], axis=1)
 single_vector.drop("Observation station", axis=1, inplace=True)
 single_vector.to_csv("results", index=False)
 print(single_vector)
-#--------------maybe replaced by fmi weather parser.----------------------
+
+#-----------------Task 5-----------------------------------
+
+def rolling_mean(path):
+
+    df = df = pd.read_csv("Parsed_wind datasets/"+ path)
+
+    df = df.sort_values(["Observation station", "datetime"])
+
+    df["rolling_mean_3h"] = (
+        df.groupby("Observation station")["Wind speed [m/s]"]
+        .rolling(window=3)
+        .mean()
+        .reset_index(level=0, drop=True)
+    )
+
+    df["rolling_std_3h"] = (
+        df.groupby("Observation station")["Wind speed [m/s]"]
+        .rolling(window=3)
+        .std()
+        .reset_index(level=0, drop=True)
+    )
+
+    rolling_features = df.groupby("Observation station").agg({
+        "rolling_mean_3h": "mean",
+        "rolling_std_3h": "mean"
+    }).reset_index()
+
+    df = df.dropna()
+
+    return rolling_features
+
+derived_list = []
+rolling_features_list = []
+for index, row in iter.iterrows():
+    #print(row["station_id"])
+    der = fmi.derived_features(stations_dataset[row["station_id"]])
+    rolls = rolling_mean(stations_dataset[row["station_id"]])
+    derived_list.append(der)
+    rolling_features_list.append(rolls)
+
+data = pd.concat(derived_list)
+data2 = pd.concat(rolling_features_list)
+
+#print(data)
+#print(data2)
+single_vector_rolling_derived = pd.concat([data, data2], axis=1)
+
+print(single_vector_rolling_derived)
+
+
+scaler = StandardScaler()
+
+# drop non-numeric column
+X = single_vector_rolling_derived.drop(columns=["Observation station"])
+print(X.shape)
+X_scaled = scaler.fit_transform(X)
+print(X_scaled)
+# back to DataFrame (optional but nice)
+X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
+
+print(X_scaled)
+
+
+#-----------------Task 6-----------------------------------
+
+
+
+
+
+
+#--------------was replaced by fmi weather parser---------->>>>>>>>>>>.------------------
 #filtered_df.to_csv("results_turbine", index=False)
 
 data_wind = pd.read_csv("GlobalWeatherRepository.csv")

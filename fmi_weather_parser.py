@@ -43,8 +43,8 @@ def summary_Statics(dataframe):
     #Half vibe coded
 
     df = pd.read_csv("Parsed_wind datasets/"+dataframe)
-    print("for_sum")
-    print(df.dtypes)
+    #print("for_sum")
+    #print(df.dtypes)
 
     features = df.groupby("Observation station").agg({
         "Wind speed [m/s]": ["mean", "max", "std"],
@@ -56,3 +56,18 @@ def summary_Statics(dataframe):
     features = features.reset_index()  
     return features
     #print(features) 
+
+def derived_features(key):
+    df = pd.read_csv("Parsed_wind datasets/"+key)
+    print("for_features")
+    print(df.dtypes)
+
+    features = df.groupby("Observation station").agg({
+        "Wind speed [m/s]": ["mean", "std"],
+        "Maximum gust speed [m/s]": "max",
+        "Maximum wind speed [m/s]": "max"
+    })
+    features.columns = ["_".join(col) for col in features.columns]
+    features = features.reset_index()  
+    return features
+
