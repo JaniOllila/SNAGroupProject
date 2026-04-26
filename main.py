@@ -220,7 +220,7 @@ print(X_scaled["risk_score_model"].describe())
 
 
 #-----------------Task 7-----------------------------------
-
+#Bringing X_scaled and turbine locations together first
 
 X_scaled["Observation station"] = ids["Observation station"].values
 
@@ -236,8 +236,7 @@ for index, row in iter.iterrows():
 #print(df_temp)
 turbines_df["Observation station"] = list_ids
 
-print(turbines_df)
-#turbines_df["risk_score_model"]
+#print(turbines_df)
 
 df_combined = pd.merge(turbines_df, X_scaled, on="Observation station", how="inner")
 
@@ -252,9 +251,7 @@ for _, row in df_combined.iterrows():
     long=row["longitude"])
     #risk=row["risk_score_model"]
 
-
 #print(G.nodes["Huikku Hailuoto"])
-
 
 #calculate distance between nodes and assig edge between them if below treshold
 threshold = 200
@@ -303,11 +300,14 @@ for i in range(len(df)):
 
         sim = similarity_matrix[i,j]
 
-        dist_score = 1 / (1 + dist)  # normalize distance
+        dist_score = 1 / (1 + dist)  # normalize distance to calc weight accurately
 
-        weight = alpha * sim + (1 - alpha) * dist_score
+        weight = alpha * sim + (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
 
         G.add_edge(df.iloc[i]["location"],df.iloc[i]["location"], weight=weight)
+
+for u, v, d in G.edges(data=True):
+    print(u, v, d["weight"])
 
 #X_scaled_unmodf.drop(columns=["Observation station","risk_score_model","rolling_mean_3h","Maximum wind speed [m/s]_max"])
 #--------------was replaced by fmi weather parser---------->>>>>>>>>>>.------------------
