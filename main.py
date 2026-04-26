@@ -5,6 +5,7 @@ import csv
 import fmi_weather_parser as fmi
 from sklearn.preprocessing import StandardScaler
 import networkx as nx
+from sklearn.metrics.pairwise import cosine_similarity
 
 stations = {
     "Hailuoto":(65, 24.7),
@@ -57,6 +58,7 @@ def read_wind_dataset(key):
     return fmi.read_fml_file("Wind datasets/" + stations_dataset[key],stations_dataset[key])
 
 #-----------------Task 1-2-----------------------------------
+#read and filter data 
 data_turbine = pd.read_csv("global_power_plant_database.csv")
 df = pd.DataFrame(data_turbine)
 filtered_df = df[df['country_long'].str.contains('Finland')]
@@ -65,6 +67,7 @@ filtered_df = filtered_df[filtered_df['primary_fuel'].str.contains('Wind')]
 #print(filtered_df.info())
 
 #-----------------Task 3-----------------------------------
+#basically assaing weather station to turrbine/windfarm
 
 vals = filtered_df.filter(items=["name","latitude","longitude"])
 #print(vals.info())
@@ -96,6 +99,7 @@ for key in stations_dataset:
 
 
 #-----------------Task 4-----------------------------------
+#kinda useless because task 5
 
 turbines_df = pd.read_csv(filename)
 
@@ -165,16 +169,11 @@ for index, row in iter.iterrows():
 data = pd.concat(derived_list)
 data2 = pd.concat(rolling_features_list)
 
-#print(data)
-#print(data2)
 single_vector_rolling_derived = pd.concat([data, data2], axis=1)
 
 print(single_vector_rolling_derived)
 
-
-scaler = StandardScaler()
-
-# drop non-numeric column
+# drop non-numeric column and save it for later
 ids = single_vector_rolling_derived["Observation station"]
 ids = ids.loc[:, ~ids.columns.duplicated()]
 
@@ -183,12 +182,16 @@ print(ids["Observation station"].shape)
 
 X = single_vector_rolling_derived.drop(columns=["Observation station"])
 
+scaler = StandardScaler()
+
 X_scaled = scaler.fit_transform(X)
 
 # back to DataFrame (optional but nice)
 X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
 
-print(X_scaled)
+X_scaled_unmodf = X_scaled
+print("--------------scaled-----------")
+print(X_scaled_unmodf)
 
 
 #-----------------Task 6-----------------------------------
@@ -219,8 +222,6 @@ print(X_scaled["risk_score_model"].describe())
 #-----------------Task 7-----------------------------------
 
 
-
-
 X_scaled["Observation station"] = ids["Observation station"].values
 
 iter = turbines_df
@@ -241,7 +242,7 @@ print(turbines_df)
 df_combined = pd.merge(turbines_df, X_scaled, on="Observation station", how="inner")
 
 print(df_combined)
-
+df_combined.to_csv("combined.csv", index=False)
 
 G = nx.Graph()
 
@@ -252,9 +253,10 @@ for _, row in df_combined.iterrows():
     #risk=row["risk_score_model"]
 
 
-print(G.nodes(data=True))
 #print(G.nodes["Huikku Hailuoto"])
 
+
+#calculate distance between nodes and assig edge between them if below treshold
 threshold = 200
 
 for i, row1 in df_combined.iterrows():
@@ -279,9 +281,35 @@ plt.figure(figsize=(10,7))
 #pos1 = nx.spring_layout(G, iterations=30)
 pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
 
-nx.draw(G,pos, with_labels=True, node_size=20)
+nx.draw(G,pos, with_labels=True, node_size=200)
 
 plt.show()
+
+#-----------------Task 8-----------------------------------
+
+df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mean",  "Wind speed [m/s]_std",  "Maximum gust speed [m/s]_max",  "rolling_std_3h"]), axis=1)
+
+similarity_matrix = cosine_similarity(df_test)
+
+print(similarity_matrix)
+
+alpha = 1
+
+df = df_combined
+
+for i in range(len(df)):
+    for j in range(i+1, len(df)):
+        dist = distlatlon((df.iloc[i]["latitude"], df.iloc[j]["longitude"]),(df.iloc[i]["latitude"], df.iloc[j]["longitude"]))
+
+        sim = similarity_matrix[i,j]
+
+        dist_score = 1 / (1 + dist)  # normalize distance
+
+        weight = alpha * sim + (1 - alpha) * dist_score
+
+        G.add_edge(df.iloc[i]["location"],df.iloc[i]["location"], weight=weight)
+
+#X_scaled_unmodf.drop(columns=["Observation station","risk_score_model","rolling_mean_3h","Maximum wind speed [m/s]_max"])
 #--------------was replaced by fmi weather parser---------->>>>>>>>>>>.------------------
 #filtered_df.to_csv("results_turbine", index=False)
 
