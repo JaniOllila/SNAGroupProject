@@ -16,6 +16,7 @@ stations = {
     "Olkiluoto":(61.1,21.3),
     "Hamina":(60.4,27),
     "Pori":(61.6,21.4),
+    "Jyvaskyla":(62.4,25.7),
 }
 
 stations_dataset = {
@@ -27,6 +28,7 @@ stations_dataset = {
     "Olkiluoto":"Rauma_Kylmäpihlaja.csv",
     "Hamina":"Kotka_Rankki.csv",
     "Pori":"Pori_Tahkoluoto_harbour.csv",
+    "Jyvaskyla":"Jyvaskyla_airport.csv",
 }
 id_to_stat = {
     "Hailuoto":"Hailuoto Marjaniemi",
@@ -37,6 +39,7 @@ id_to_stat = {
     "Olkiluoto":"Rauma Kylmäpihlaja",
     "Hamina":"Kotka Rankki",
     "Pori":"Pori Tahkoluoto harbour",
+    "Jyvaskyla":"Jyväskylä airport AWOS",
 }
 
 def distlatlon(coord1, coord2):
@@ -68,7 +71,6 @@ filtered_df = filtered_df[filtered_df['primary_fuel'].str.contains('Wind')]
 
 #-----------------Task 3-----------------------------------
 #basically assaing weather station to turrbine/windfarm
-
 vals = filtered_df.filter(items=["name","latitude","longitude"])
 #print(vals.info())
 list_lat_long = vals.values.tolist()
@@ -202,22 +204,25 @@ for key in df_dict:
     y = df_dict[key]
     ys.append(y)
 
-df_all = pd.concat(ys)
+df_all_wind = pd.concat(ys)
 
-y = (df_all.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 28).astype(int)
+def risk_score_calc(df_wind):
 
-from sklearn.linear_model import LogisticRegression
+    y = (df_wind.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 28).astype(int)
 
-model = LogisticRegression()
-model.fit(X_scaled.drop(columns=["risk_score"], errors="ignore"), y)
+    from sklearn.linear_model import LogisticRegression
 
-risk_prob = model.predict_proba(X_scaled.drop(columns=["risk_score"], errors="ignore"))[:, 1]
+    model = LogisticRegression()
+    model.fit(X_scaled.drop(columns=["risk_score"], errors="ignore"), y)
 
-X_scaled["risk_score_model"] = risk_prob
+    risk_prob = model.predict_proba(X_scaled.drop(columns=["risk_score"], errors="ignore"))[:, 1]
 
-print(X_scaled["risk_score_model"].describe())
+    X_scaled["risk_score_model"] = risk_prob
 
+    #print(X_scaled["risk_score_model"].describe())
+    return X_scaled
 
+X_scaled = risk_score_calc(df_all_wind)
 
 #-----------------Task 7-----------------------------------
 #Bringing X_scaled and turbine locations together first
@@ -254,7 +259,7 @@ for _, row in df_combined.iterrows():
 #print(G.nodes["Huikku Hailuoto"])
 
 #calculate distance between nodes and assig edge between them if below treshold
-threshold = 200
+threshold = 300
 
 for i, row1 in df_combined.iterrows():
     for j, row2 in df_combined.iterrows():
@@ -301,53 +306,79 @@ for i in range(len(df)):
         sim = similarity_matrix[i,j]
 
         dist_score = 1 / (1 + dist)  # normalize distance to calc weight accurately
-        print(dist_score)
+
         weight = alpha * sim + (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
-        print(weight)
+
         if(G.has_edge(df.iloc[i]["location"],df.iloc[j]["location"])):
             G[df.iloc[i]["location"]][df.iloc[j]["location"]]["weight"] = weight
 
-for u, v, d in G.edges(data=True):
-    print(u, v, d["weight"])
+#For edge weights
+#for u, v, d in G.edges(data=True):
+#    print(u, v, d["weight"])
 
 
 #-----------------Task 9-----------------------------------
 
 degrees = dict(G.degree())
 
-biggest_node = max(degrees, key=degrees.get)
-print("Highest degree node:", biggest_node, "Degree:", degrees[biggest_node])
+#biggest_node = max(degrees, key=degrees.get)
+#print("Highest degree node:", biggest_node, "Degree:", degrees[biggest_node])
+df_degree = pd.DataFrame({
+    "location": list(degrees.keys()),
+    "degree_value": list(degrees.values())
+})
 
-degree_values = list(degrees.values())
-
-plt.hist(degree_values, bins=20)
-plt.xlabel("Degree")
-plt.ylabel("Frequency")
+#plt.hist(degree_values, bins=20)
+#plt.xlabel("Degree")
+#plt.ylabel("Frequency")
 #plt.show()
 
 avg_clust = nx.average_clustering(G, weight="weight")
-connect_comp = nx.number_connected_components(G)
+connect_comp = nx.connected_components(G)
 
 print(avg_clust)
 print(connect_comp)
 
-#X_scaled_unmodf.drop(columns=["Observation station","risk_score_model","rolling_mean_3h","Maximum wind speed [m/s]_max"])
-#--------------was replaced by fmi weather parser---------->>>>>>>>>>>.------------------
-#filtered_df.to_csv("results_turbine", index=False)
 
-data_wind = pd.read_csv("GlobalWeatherRepository.csv")
-df = pd.DataFrame(data_wind)
-filtered_df_wind = df[df['country'].str.contains('Finland')]
+d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp}
+#the data is not in dataframes yet might do it but seem unnessesary
 
-filtered_df_wind_parsed2 = filtered_df_wind.loc[:, filtered_df_wind.columns.intersection(["country","location_name","latitude","longitude","wind_kph","wind_degree","wind_direction","gust_kph","last_updated_epoch","last_updated"])]
+#-----------------Task 10-----------------------------------
 
-filtered_df_wind_parsed2["datetime"] = pd.to_datetime(filtered_df_wind_parsed2["last_updated_epoch"], unit="s", utc = True).dt.tz_convert('Europe/Helsinki')
+deg_cent = nx.degree_centrality(G)
 
-#print(filtered_df_wind_parsed2)
+bet_cent = nx.betweenness_centrality(G, weight="weight")
 
-#filtered_df_wind_parsed2.to_csv("results", index=False)
+clo_cent = nx.closeness_centrality(G)
 
-#print(filtered_df_wind_parsed)
-#filtered_df_wind_parsed = filtered_df_wind.drop(filtered_df_wind.columns.difference(["country","location_name","latitude","longitude","wind_kph","wind_degree","wind_direction","gust_kph"]), axis=1, inplace=True)
-#filtered_df_wind = filtered_df_wind[filtered_df_wind['primary_fuel'].str.contains('Wind')]
-#"country","location_name","latitude","longitude","wind_kph","wind_degree","wind_direction","gust_kph"
+df_centrality = pd.DataFrame({
+    "location": list(deg_cent.keys()),
+    "degree_centrality": list(deg_cent.values()),
+    "betweenness_centrality": list(bet_cent.values()),
+    "closeness_centrality": list(clo_cent.values())
+})
+
+#print(df_centrality)
+
+df_ranked = df_centrality.sort_values(by="betweenness_centrality", ascending=False)
+
+#print(df_ranked)
+
+df_analysis = df_centrality.merge(df_combined[["location","risk_score_model"]],on="location")
+
+df_analysis.sort_values(by=["risk_score_model", "betweenness_centrality"],ascending=False)
+
+#These nodes have high risk score and also important node in network this might change if edge weights are recalc or changed 
+critical = df_analysis[
+    (df_analysis["risk_score_model"] > df_analysis["risk_score_model"].mean()) & (df_analysis["betweenness_centrality"] > df_analysis["betweenness_centrality"].mean())
+]
+
+print("critical locations in network: ")
+print(critical)
+
+#-----------------Task 11-----------------------------------
+#df_all_wind has all of the wind data in one frame this can be groubed() with datetime
+#then roll thourg dataset and calc mean for week month and if its above certain treshold
+#can identify month or weeks with high gust, wind and maxminm wind speeds.(here as reminder)
+#risk_score_calc to calc risk scores this function is kinda ok but might not work well because uses .max gust speed.
+#Many other functins need to be made from one time use code to make work (here as reminder)
