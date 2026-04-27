@@ -264,7 +264,7 @@ for i, row1 in df_combined.iterrows():
                 G.add_edge(
                     row1["location"],
                     row2["location"],
-                    weight=dist
+                    weight=1
                 )
         
 print(G.number_of_nodes())
@@ -290,7 +290,7 @@ similarity_matrix = cosine_similarity(df_test)
 
 print(similarity_matrix)
 
-alpha = 1
+alpha = 0.3
 
 df = df_combined
 
@@ -301,13 +301,35 @@ for i in range(len(df)):
         sim = similarity_matrix[i,j]
 
         dist_score = 1 / (1 + dist)  # normalize distance to calc weight accurately
-
+        print(dist_score)
         weight = alpha * sim + (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
-
-        G.add_edge(df.iloc[i]["location"],df.iloc[i]["location"], weight=weight)
+        print(weight)
+        if(G.has_edge(df.iloc[i]["location"],df.iloc[j]["location"])):
+            G[df.iloc[i]["location"]][df.iloc[j]["location"]]["weight"] = weight
 
 for u, v, d in G.edges(data=True):
     print(u, v, d["weight"])
+
+
+#-----------------Task 9-----------------------------------
+
+degrees = dict(G.degree())
+
+biggest_node = max(degrees, key=degrees.get)
+print("Highest degree node:", biggest_node, "Degree:", degrees[biggest_node])
+
+degree_values = list(degrees.values())
+
+plt.hist(degree_values, bins=20)
+plt.xlabel("Degree")
+plt.ylabel("Frequency")
+#plt.show()
+
+avg_clust = nx.average_clustering(G, weight="weight")
+connect_comp = nx.number_connected_components(G)
+
+print(avg_clust)
+print(connect_comp)
 
 #X_scaled_unmodf.drop(columns=["Observation station","risk_score_model","rolling_mean_3h","Maximum wind speed [m/s]_max"])
 #--------------was replaced by fmi weather parser---------->>>>>>>>>>>.------------------
