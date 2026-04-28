@@ -38,11 +38,11 @@ def read_fml_file(filename, resultname):
 
 
 
-def summary_Statics(dataframe):
+def summary_Statics(key):
     #Creates summary of statics mean max for different wind info
     #Half vibe coded
 
-    df = pd.read_csv("Parsed_wind datasets/"+dataframe)
+    df = pd.read_csv("Parsed_wind datasets/"+key)
     #print("for_sum")
     #print(df.dtypes)
 

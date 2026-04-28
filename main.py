@@ -6,6 +6,7 @@ import fmi_weather_parser as fmi
 from sklearn.preprocessing import StandardScaler
 import networkx as nx
 from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.linear_model import LogisticRegression
 
 stations = {
     "Hailuoto":(65, 24.7),
@@ -184,15 +185,18 @@ print(ids["Observation station"].shape)
 
 X = single_vector_rolling_derived.drop(columns=["Observation station"])
 
-scaler = StandardScaler()
+def scale_func(X_scale_this):
+    scaler = StandardScaler()
 
-X_scaled = scaler.fit_transform(X)
+    X_scaling = scaler.fit_transform(X_scale_this)
 
-# back to DataFrame (optional but nice)
-X_scaled = pd.DataFrame(X_scaled, columns=X.columns)
+    # back to DataFrame
+    return pd.DataFrame(X_scaling, columns=X_scale_this.columns)
+      
+X_scaled = scale_func(X)
 
 X_scaled_unmodf = X_scaled
-print("--------------scaled-----------")
+
 print(X_scaled_unmodf)
 
 
@@ -206,23 +210,22 @@ for key in df_dict:
 
 df_all_wind = pd.concat(ys)
 
-def risk_score_calc(df_wind):
+def risk_score_calc(scaled_data, y_list):
 
-    y = (df_wind.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 28).astype(int)
-
-    from sklearn.linear_model import LogisticRegression
-
+    print(y)
     model = LogisticRegression()
-    model.fit(X_scaled.drop(columns=["risk_score"], errors="ignore"), y)
+    model.fit(scaled_data.drop(columns=["risk_score"], errors="ignore"), y_list)
 
-    risk_prob = model.predict_proba(X_scaled.drop(columns=["risk_score"], errors="ignore"))[:, 1]
+    risk_prob = model.predict_proba(scaled_data.drop(columns=["risk_score"], errors="ignore"))[:, 1]
 
-    X_scaled["risk_score_model"] = risk_prob
+    scaled_data["risk_score_model"] = risk_prob
 
     #print(X_scaled["risk_score_model"].describe())
-    return X_scaled
+    return scaled_data
 
-X_scaled = risk_score_calc(df_all_wind)
+y = (df_all_wind.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 28).astype(int)
+
+X_scaled = risk_score_calc(X_scaled, y)
 
 #-----------------Task 7-----------------------------------
 #Bringing X_scaled and turbine locations together first
@@ -382,3 +385,62 @@ print(critical)
 #can identify month or weeks with high gust, wind and maxminm wind speeds.(here as reminder)
 #risk_score_calc to calc risk scores this function is kinda ok but might not work well because uses .max gust speed.
 #Many other functins need to be made from one time use code to make work (here as reminder)
+
+#update can calc how turbine has different risk score depending month not perfect ---------->but need to sleep
+#need to automate and probaply should calc std for each month more reliable results.
+
+def month_avg(key):
+    df = pd.read_csv("Parsed_wind datasets/"+key)
+
+    df["datetime"] = pd.to_datetime(df["datetime"])
+
+    df["month"] = df["datetime"].dt.month
+    
+    month_avg = df.groupby("month").mean(numeric_only=True)
+    
+    #month_avg = month_avg.groupby("datetime or any other feature").agg({
+    #    "Wind speed [m/s]": ["mean", "std"],
+    #    "Maximum gust speed [m/s]": "max"
+    #})
+
+    df["Observation station"] = key
+
+    return month_avg
+
+#monthly_avg = []
+
+#for key in stations_dataset:
+#    one_df = month_avg(stations_dataset[key])
+#    one_df = one_df.agg({
+#        "Wind speed [m/s]": ["mean", "std"],
+#        "Maximum gust speed [m/s]": "max"
+#    }).reset_index()
+#    print(one_df)
+#    monthly_avg.append(one_df)
+
+#monthly_avg_df = pd.concat(monthly_avg)
+
+month = month_avg(stations_dataset["Hailuoto"])
+# again this Y bullshit
+y = (month["Maximum gust speed [m/s]"] > 9).astype(int)
+df_scaled = scale_func(month)
+risk_score_df_monthly = risk_score_calc(df_scaled,y)
+print(risk_score_df_monthly)
+
+#df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
+
+#df_all_wind["month"] = df_all_wind["datetime"].dt.month
+
+#df_monthly = df_all_wind.groupby(
+#    ["Observation station", pd.Grouper(key="datetime", freq="MS")]).agg({
+#        "Wind speed [m/s]": ["mean", "std"],
+#        "Maximum gust speed [m/s]": "max"
+#    }).reset_index()
+
+#print(df_monthly)
+
+#df_scaled = scale_func(df_monthly)
+#y = (df_monthly["Maximum gust speed [m/s]"] > 20).astype(int)
+#risk_score_df_monthly = risk_score_calc(df_scaled,y)
+
+#rint(risk_score_df_monthly)
