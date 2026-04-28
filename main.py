@@ -17,7 +17,8 @@ stations = {
     "Olkiluoto":(61.1,21.3),
     "Hamina":(60.4,27),
     "Pori":(61.6,21.4),
-    "Jyvaskyla":(62.4,25.7),
+    #"Jyvaskyla":(62.4,25.7),
+    "Kemi_ajos":(65.7,24.5)
 }
 
 stations_dataset = {
@@ -29,7 +30,8 @@ stations_dataset = {
     "Olkiluoto":"Rauma_Kylmäpihlaja.csv",
     "Hamina":"Kotka_Rankki.csv",
     "Pori":"Pori_Tahkoluoto_harbour.csv",
-    "Jyvaskyla":"Jyvaskyla_airport.csv",
+    "Kemi_ajos":"Kemi_Ajos.csv"
+    #"Jyvaskyla":"Jyvaskyla_airport.csv",
 }
 id_to_stat = {
     "Hailuoto":"Hailuoto Marjaniemi",
@@ -40,7 +42,8 @@ id_to_stat = {
     "Olkiluoto":"Rauma Kylmäpihlaja",
     "Hamina":"Kotka Rankki",
     "Pori":"Pori Tahkoluoto harbour",
-    "Jyvaskyla":"Jyväskylä airport AWOS",
+    #Jyvaskyla":"Jyväskylä airport AWOS",
+    "Kemi_ajos":"Kemi Ajos"
 }
 
 def distlatlon(coord1, coord2):
@@ -212,7 +215,6 @@ df_all_wind = pd.concat(ys)
 
 def risk_score_calc(scaled_data, y_list):
 
-    #print(y)
     model = LogisticRegression()
     model.fit(scaled_data.drop(columns=["risk_score"], errors="ignore"), y_list)
 
@@ -422,10 +424,10 @@ def month_avg(key):
 for key in stations_dataset:
     month = month_avg(stations_dataset[key])
     y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean()) ).astype(int)
-    print(y)
+    #print(y)
     df_scaled = scale_func(month)
     risk_score_df_monthly = risk_score_calc(df_scaled,y)
-    print(risk_score_df_monthly)
+    #print(risk_score_df_monthly)
 
 
 
