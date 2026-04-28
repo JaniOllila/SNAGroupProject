@@ -427,6 +427,9 @@ for key in stations_dataset:
     risk_score_df_monthly = risk_score_calc(df_scaled,y)
     print(risk_score_df_monthly)
 
+
+
+
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
 
 #df_all_wind["month"] = df_all_wind["datetime"].dt.month
