@@ -124,7 +124,7 @@ single_vector = pd.concat([turbines_df, sums_df], axis=1)
 #single_vector = pd.concat([turbines_df, Summary], axis=1)
 single_vector.drop("Observation station", axis=1, inplace=True)
 single_vector.to_csv("results", index=False)
-print(single_vector)
+#print(single_vector)
 
 #-----------------Task 5-----------------------------------
 
@@ -174,14 +174,14 @@ data2 = pd.concat(rolling_features_list)
 
 single_vector_rolling_derived = pd.concat([data, data2], axis=1)
 
-print(single_vector_rolling_derived)
+#print(single_vector_rolling_derived)
 
 # drop non-numeric column and save it for later
 ids = single_vector_rolling_derived["Observation station"]
 ids = ids.loc[:, ~ids.columns.duplicated()]
 
-print(type(ids["Observation station"]))
-print(ids["Observation station"].shape)
+#print(type(ids["Observation station"]))
+#print(ids["Observation station"].shape)
 
 X = single_vector_rolling_derived.drop(columns=["Observation station"])
 
@@ -197,7 +197,7 @@ X_scaled = scale_func(X)
 
 X_scaled_unmodf = X_scaled
 
-print(X_scaled_unmodf)
+#print(X_scaled_unmodf)
 
 
 #-----------------Task 6-----------------------------------
@@ -212,7 +212,7 @@ df_all_wind = pd.concat(ys)
 
 def risk_score_calc(scaled_data, y_list):
 
-    print(y)
+    #print(y)
     model = LogisticRegression()
     model.fit(scaled_data.drop(columns=["risk_score"], errors="ignore"), y_list)
 
@@ -248,7 +248,7 @@ turbines_df["Observation station"] = list_ids
 
 df_combined = pd.merge(turbines_df, X_scaled, on="Observation station", how="inner")
 
-print(df_combined)
+#print(df_combined)
 df_combined.to_csv("combined.csv", index=False)
 
 G = nx.Graph()
@@ -296,7 +296,7 @@ df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mea
 
 similarity_matrix = cosine_similarity(df_test)
 
-print(similarity_matrix)
+#print(similarity_matrix)
 
 alpha = 0.3
 
@@ -339,8 +339,8 @@ df_degree = pd.DataFrame({
 avg_clust = nx.average_clustering(G, weight="weight")
 connect_comp = nx.connected_components(G)
 
-print(avg_clust)
-print(connect_comp)
+#print(avg_clust)
+#print(connect_comp)
 
 
 d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp}
@@ -381,7 +381,7 @@ print(critical)
 
 #-----------------Task 11-----------------------------------
 #df_all_wind has all of the wind data in one frame this can be groubed() with datetime
-#then roll thourg dataset and calc mean for week month and if its above certain treshold
+#then roll thourg dataset and calc mean for week/month and if its above certain treshold
 #can identify month or weeks with high gust, wind and maxminm wind speeds.(here as reminder)
 #risk_score_calc to calc risk scores this function is kinda ok but might not work well because uses .max gust speed.
 #Many other functins need to be made from one time use code to make work (here as reminder)
