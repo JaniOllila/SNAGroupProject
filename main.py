@@ -76,7 +76,6 @@ filtered_df = filtered_df[filtered_df['primary_fuel'].str.contains('Wind')]
 #-----------------Task 3-----------------------------------
 #basically assaing weather station to turrbine/windfarm
 vals = filtered_df.filter(items=["name","latitude","longitude"])
-#print(vals.info())
 list_lat_long = vals.values.tolist()
 list_loc_lat_long_id = []
 for loc, lat, long in list_lat_long:
@@ -97,7 +96,6 @@ filename = "turbine_dataset"
 fields = ['location', 'latitude','longitude','station_id']
 
 csv_write(list_loc_lat_long_id, fields, filename)
-#print(list_loc_lat_long_id)
 df_dict = {}
 for key in stations_dataset:
     df = read_wind_dataset(key)
@@ -112,22 +110,19 @@ turbines_df = pd.read_csv(filename)
 iter = turbines_df
 sums = []
 for index, row in iter.iterrows():
-    #print(row["station_id"])
     sum = fmi.summary_Statics(stations_dataset[row["station_id"]])
     sums.append(sum)
     
 sums_df = pd.concat(sums)
-#print(sums_df)
 
 turbines_df = turbines_df.reset_index(drop=True)
 sums_df = sums_df.reset_index(drop=True)
 
 single_vector = pd.concat([turbines_df, sums_df], axis=1)
 
-#single_vector = pd.concat([turbines_df, Summary], axis=1)
+
 single_vector.drop("Observation station", axis=1, inplace=True)
 single_vector.to_csv("results", index=False)
-#print(single_vector)
 
 #-----------------Task 5-----------------------------------
 
@@ -162,11 +157,9 @@ def rolling_mean(path):
 
 derived_list = []
 rolling_features_list = []
-#print(turbines_df)
 iter = turbines_df.drop_duplicates(subset=["station_id"])
 
 for index, row in iter.iterrows():
-    #print(row["station_id"])
     der = fmi.derived_features(stations_dataset[row["station_id"]])
     rolls = rolling_mean(stations_dataset[row["station_id"]])
     derived_list.append(der)
@@ -176,8 +169,6 @@ data = pd.concat(derived_list)
 data2 = pd.concat(rolling_features_list)
 
 single_vector_rolling_derived = pd.concat([data, data2], axis=1)
-
-#print(single_vector_rolling_derived)
 
 # drop non-numeric column and save it for later
 ids = single_vector_rolling_derived["Observation station"]
@@ -200,8 +191,6 @@ X_scaled = scale_func(X)
 
 X_scaled_unmodf = X_scaled
 
-#print(X_scaled_unmodf)
-
 
 #-----------------Task 6-----------------------------------
 #every data frame in one dataframe
@@ -222,11 +211,9 @@ def risk_score_calc(scaled_data, y_list):
 
     scaled_data["risk_score_model"] = risk_prob
 
-    #print(X_scaled["risk_score_model"].describe())
     return scaled_data
 
 y = (df_all_wind.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 30).astype(int)
-print(y)
 X_scaled = risk_score_calc(X_scaled, y)
 
 #-----------------Task 7-----------------------------------
@@ -243,14 +230,11 @@ for index, row in iter.iterrows():
     list_ids.append(st)
 
 #df_temp = pd.concat(list_ids)
-#print(df_temp)
-turbines_df["Observation station"] = list_ids
 
-#print(turbines_df)
+turbines_df["Observation station"] = list_ids
 
 df_combined = pd.merge(turbines_df, X_scaled, on="Observation station", how="inner")
 
-#print(df_combined)
 df_combined.to_csv("combined.csv", index=False)
 
 G = nx.Graph()
@@ -297,8 +281,6 @@ plt.show()
 df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mean",  "Wind speed [m/s]_std",  "Maximum gust speed [m/s]_max",  "rolling_std_3h"]), axis=1)
 
 similarity_matrix = cosine_similarity(df_test)
-
-#print(similarity_matrix)
 
 alpha = 0.3
 
@@ -363,11 +345,9 @@ df_centrality = pd.DataFrame({
     "closeness_centrality": list(clo_cent.values())
 })
 
-#print(df_centrality)
+
 
 df_ranked = df_centrality.sort_values(by="betweenness_centrality", ascending=False)
-
-#print(df_ranked)
 
 df_analysis = df_centrality.merge(df_combined[["location","risk_score_model"]],on="location")
 
@@ -405,30 +385,26 @@ def month_avg(key, all_wind=0):
     month_std= df.groupby("month").std(numeric_only=True)
 
     month_std = month_std.drop(month_std.columns.difference(["Wind speed [m/s]"]),axis=1)
-    #print(month_std)
     month_avg = month_avg.join(month_std, rsuffix="_std")
     
-    #month_avg["month_std_wind_speed"] = 
-
     return month_avg
 
 
 for key in stations_dataset:
     month = month_avg(stations_dataset[key])
     y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean()) ).astype(int)
-    #print(y)
+
     month_cp = month.drop(["Maximum wind speed [m/s]"],axis=1)
-    #print(month_cp)
+
     df_scaled = scale_func(month_cp)
     risk_score_df_monthly = risk_score_calc(df_scaled,y)
-    #print(risk_score_df_monthly)
+
 
 all_stations_month_avg = month_avg("place",1)
 
 
 y = (all_stations_month_avg["Maximum gust speed [m/s]"] > (all_stations_month_avg["Maximum gust speed [m/s]"].mean())).astype(int)
 month_cp = all_stations_month_avg.drop(["Maximum wind speed [m/s]"],axis=1)
-#print(month_cp)
 df_scaled = scale_func(month_cp)
 risk_score_df_monthly = risk_score_calc(df_scaled,y)
 print(risk_score_df_monthly)
@@ -437,7 +413,6 @@ values_month_avg = all_stations_month_avg["Maximum gust speed [m/s]"].to_list()
 
 plt.figure(figsize=(12,7))
 plt.subplot(1,2,1)
-print(values_month_avg)
 plt.bar(all_stations_month_avg.index,values_month_avg)
 plt.xlabel("month")
 plt.ylabel("Maximum gust speed [m/s]")
@@ -451,15 +426,15 @@ plt.ylabel("Risk_score")
 plt.title("Monthly risk_score")
 plt.show()
 
-
+plt.figure(figsize=(10,7))
 risk_score_all = df_combined["risk_score_model"].to_list()
-print(df_combined)
-print(risk_score_all)
 stations_lista = df_combined["location"].to_list()
 plt.bar(stations_lista,risk_score_all, width=0.5)
 plt.xlabel("Station")
 plt.ylabel("Risk_score")
 plt.title("risk_score for each station")
+plt.xticks(rotation = 90)
+plt.tight_layout()
 plt.show()
 
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
