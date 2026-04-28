@@ -242,7 +242,8 @@ G = nx.Graph()
 for _, row in df_combined.iterrows():
     G.add_node(row["location"],
     lat=row["latitude"],
-    long=row["longitude"])
+    long=row["longitude"],
+    risk_sc=row["risk_score_model"])
     #risk=row["risk_score_model"]
 
 #print(G.nodes["Huikku Hailuoto"])
@@ -264,6 +265,10 @@ for i, row1 in df_combined.iterrows():
 print(G.number_of_nodes())
 print(G.number_of_edges())
 print(G.nodes(data=True))
+
+#score_dict = dict(G.nodes(data="risk_sc"))
+#for node in score_dict:
+#    print(score_dict[node])
 
 import matplotlib.pyplot as plt
 
@@ -389,27 +394,62 @@ def month_avg(key, all_wind=0):
     
     return month_avg
 
+def day_avg(key, all_wind=0):
+    if(all_wind == 0):
+        df = pd.read_csv("Parsed_wind datasets/"+key)
+    else:
+        df = df_all_wind
 
+    df["datetime"] = pd.to_datetime(df["datetime"])
+
+    df["day"] = df["datetime"].dt.hour
+    
+    day_avg = df.groupby("day").mean(numeric_only=True)
+    day_std= df.groupby("day").std(numeric_only=True)
+
+    day_std = day_std.drop(day_std.columns.difference(["Wind speed [m/s]"]),axis=1)
+    day_avg = day_avg.join(day_std, rsuffix="_std")
+    
+    return day_avg
+
+list_dfs = []
 for key in stations_dataset:
     month = month_avg(stations_dataset[key])
     y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean()) ).astype(int)
-
     month_cp = month.drop(["Maximum wind speed [m/s]"],axis=1)
-
     df_scaled = scale_func(month_cp)
     risk_score_df_monthly = risk_score_calc(df_scaled,y)
+    month["station_id"] = key
+    list_dfs.append(month)
+    
+df_month_risk_score_each_station = pd.concat(list_dfs)
+#print(df_month_risk_score_each_station)
 
+plt.figure(figsize=(10,7))
+for i in list_dfs:
+    plt.plot(i.index,i["Wind speed [m/s]"], label=i["station_id"][1])
+
+plt.legend()
+plt.title("Wind Trends through year per station")
+plt.xlabel("Month")
+plt.ylabel("Wind (m/s) mean")
+plt.xticks(rotation=45)
+
+plt.show()
 
 all_stations_month_avg = month_avg("place",1)
-
 
 y = (all_stations_month_avg["Maximum gust speed [m/s]"] > (all_stations_month_avg["Maximum gust speed [m/s]"].mean())).astype(int)
 month_cp = all_stations_month_avg.drop(["Maximum wind speed [m/s]"],axis=1)
 df_scaled = scale_func(month_cp)
 risk_score_df_monthly = risk_score_calc(df_scaled,y)
-print(risk_score_df_monthly)
+#print(risk_score_df_monthly)
 
 values_month_avg = all_stations_month_avg["Maximum gust speed [m/s]"].to_list()
+
+df_day_avgs = day_avg("location",1)
+#print(df_day_avgs)
+#print(df_day_avgs.info())
 
 plt.figure(figsize=(12,7))
 plt.subplot(1,2,1)
@@ -437,6 +477,18 @@ plt.xticks(rotation = 90)
 plt.tight_layout()
 plt.show()
 
+plt.figure(figsize=(10,5))
+
+plt.plot(df_day_avgs.index, df_day_avgs["Wind speed [m/s]"], label="Mean Wind")
+
+plt.legend()
+plt.title("Wind Trends during one day")
+plt.xlabel("Hours")
+plt.ylabel("Wind (m/s)")
+plt.xticks(rotation=45)
+
+plt.show()
+
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
 
 #df_all_wind["month"] = df_all_wind["datetime"].dt.month
@@ -454,3 +506,7 @@ plt.show()
 #risk_score_df_monthly = risk_score_calc(df_scaled,y)
 
 #rint(risk_score_df_monthly)
+
+#-----------------Task 11-----------------------------------
+
+#Added risk score to each node but probably easier to jus get them from "df_combined"
