@@ -419,13 +419,13 @@ def month_avg(key):
 #    monthly_avg.append(one_df)
 
 #monthly_avg_df = pd.concat(monthly_avg)
-
-month = month_avg(stations_dataset["Hailuoto"])
-# again this Y bullshit
-y = (month["Maximum gust speed [m/s]"] > 9).astype(int)
-df_scaled = scale_func(month)
-risk_score_df_monthly = risk_score_calc(df_scaled,y)
-print(risk_score_df_monthly)
+for key in stations_dataset:
+    month = month_avg(stations_dataset[key])
+    y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean()) ).astype(int)
+    print(y)
+    df_scaled = scale_func(month)
+    risk_score_df_monthly = risk_score_calc(df_scaled,y)
+    print(risk_score_df_monthly)
 
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
 
