@@ -225,8 +225,8 @@ def risk_score_calc(scaled_data, y_list):
     #print(X_scaled["risk_score_model"].describe())
     return scaled_data
 
-y = (df_all_wind.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 28).astype(int)
-
+y = (df_all_wind.groupby("Observation station")["Maximum gust speed [m/s]"].max() > 30).astype(int)
+print(y)
 X_scaled = risk_score_calc(X_scaled, y)
 
 #-----------------Task 7-----------------------------------
@@ -388,49 +388,79 @@ print(critical)
 #risk_score_calc to calc risk scores this function is kinda ok but might not work well because uses .max gust speed.
 #Many other functins need to be made from one time use code to make work (here as reminder)
 
-#update can calc how turbine has different risk score depending month not perfect ---------->but need to sleep
+
 #need to automate and probaply should calc std for each month more reliable results.
 
-def month_avg(key):
-    df = pd.read_csv("Parsed_wind datasets/"+key)
+def month_avg(key, all_wind=0):
+    if(all_wind == 0):
+        df = pd.read_csv("Parsed_wind datasets/"+key)
+    else:
+        df = df_all_wind
 
     df["datetime"] = pd.to_datetime(df["datetime"])
 
     df["month"] = df["datetime"].dt.month
     
     month_avg = df.groupby("month").mean(numeric_only=True)
-    
-    #month_avg = month_avg.groupby("datetime or any other feature").agg({
-    #    "Wind speed [m/s]": ["mean", "std"],
-    #    "Maximum gust speed [m/s]": "max"
-    #})
+    month_std= df.groupby("month").std(numeric_only=True)
 
-    df["Observation station"] = key
+    month_std = month_std.drop(month_std.columns.difference(["Wind speed [m/s]"]),axis=1)
+    #print(month_std)
+    month_avg = month_avg.join(month_std, rsuffix="_std")
+    
+    #month_avg["month_std_wind_speed"] = 
 
     return month_avg
 
-#monthly_avg = []
 
-#for key in stations_dataset:
-#    one_df = month_avg(stations_dataset[key])
-#    one_df = one_df.agg({
-#        "Wind speed [m/s]": ["mean", "std"],
-#        "Maximum gust speed [m/s]": "max"
-#    }).reset_index()
-#    print(one_df)
-#    monthly_avg.append(one_df)
-
-#monthly_avg_df = pd.concat(monthly_avg)
 for key in stations_dataset:
     month = month_avg(stations_dataset[key])
     y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean()) ).astype(int)
     #print(y)
-    df_scaled = scale_func(month)
+    month_cp = month.drop(["Maximum wind speed [m/s]"],axis=1)
+    #print(month_cp)
+    df_scaled = scale_func(month_cp)
     risk_score_df_monthly = risk_score_calc(df_scaled,y)
     #print(risk_score_df_monthly)
 
+all_stations_month_avg = month_avg("place",1)
 
 
+y = (all_stations_month_avg["Maximum gust speed [m/s]"] > (all_stations_month_avg["Maximum gust speed [m/s]"].mean())).astype(int)
+month_cp = all_stations_month_avg.drop(["Maximum wind speed [m/s]"],axis=1)
+#print(month_cp)
+df_scaled = scale_func(month_cp)
+risk_score_df_monthly = risk_score_calc(df_scaled,y)
+print(risk_score_df_monthly)
+
+values_month_avg = all_stations_month_avg["Maximum gust speed [m/s]"].to_list()
+
+plt.figure(figsize=(12,7))
+plt.subplot(1,2,1)
+print(values_month_avg)
+plt.bar(all_stations_month_avg.index,values_month_avg)
+plt.xlabel("month")
+plt.ylabel("Maximum gust speed [m/s]")
+plt.title("Monthly distrupution of Maximum gust speed")
+
+plt.subplot(1,2,2)
+values_month_avg = risk_score_df_monthly["risk_score_model"].to_list()
+plt.bar(all_stations_month_avg.index,values_month_avg)
+plt.xlabel("month")
+plt.ylabel("Risk_score")
+plt.title("Monthly risk_score")
+plt.show()
+
+
+risk_score_all = df_combined["risk_score_model"].to_list()
+print(df_combined)
+print(risk_score_all)
+stations_lista = df_combined["location"].to_list()
+plt.bar(stations_lista,risk_score_all, width=0.5)
+plt.xlabel("Station")
+plt.ylabel("Risk_score")
+plt.title("risk_score for each station")
+plt.show()
 
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
 
