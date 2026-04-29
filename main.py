@@ -272,14 +272,14 @@ print(G.nodes(data=True))
 
 import matplotlib.pyplot as plt
 
-plt.figure(figsize=(10,7))
+#plt.figure(figsize=(10,7))
 
 #pos1 = nx.spring_layout(G, iterations=30)
-pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
+#pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
 
-nx.draw(G,pos, with_labels=True, node_size=200)
-
-plt.show()
+#nx.draw(G,pos, with_labels=True, node_size=200)
+#plt.savefig("plots and fiqures/network")
+#plt.show()
 
 #-----------------Task 8-----------------------------------
 
@@ -308,6 +308,26 @@ for i in range(len(df)):
 #for u, v, d in G.edges(data=True):
 #    print(u, v, d["weight"])
 
+plt.figure(figsize=(10,7))
+
+pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
+#nx.draw(G,pos,node_size=200,with_labels=True)
+labels = nx.get_edge_attributes(G, "weight")
+#, with_labels=True
+labels_round = {}
+for edge, weight in labels.items():
+    rounded = {edge:f"{weight:.3f}"}
+    labels_round.update(rounded)
+
+nx.draw_networkx_nodes(G, pos, node_size=200)
+nx.draw_networkx_edges(G, pos)
+nx.draw_networkx_labels(G, pos)
+
+nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
+
+#nx.draw_networkx_edge_labels(G,pos,edge_labels=labels,connectionstyle="arc3")
+plt.savefig("plots_and_fiqures/network.png")
+plt.show()
 
 #-----------------Task 9-----------------------------------
 
@@ -413,6 +433,7 @@ def day_avg(key, all_wind=0):
     return day_avg
 
 list_dfs = []
+list_dfs2 = []
 for key in stations_dataset:
     month = month_avg(stations_dataset[key])
     y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean()) ).astype(int)
@@ -421,11 +442,14 @@ for key in stations_dataset:
     risk_score_df_monthly = risk_score_calc(df_scaled,y)
     month["station_id"] = key
     list_dfs.append(month)
+    risk_score_df_monthly["station_id"] = key
+    list_dfs2.append(risk_score_df_monthly)
     
 df_month_risk_score_each_station = pd.concat(list_dfs)
 #print(df_month_risk_score_each_station)
 
-plt.figure(figsize=(10,7))
+plt.figure(figsize=(12,7))
+plt.subplot(1,2,1)
 for i in list_dfs:
     plt.plot(i.index,i["Wind speed [m/s]"], label=i["station_id"][1])
 
@@ -435,7 +459,17 @@ plt.xlabel("Month")
 plt.ylabel("Wind (m/s) mean")
 plt.xticks(rotation=45)
 
-plt.show()
+plt.subplot(1,2,2)
+for i in list_dfs2:
+    plt.plot(i.index,i["risk_score_model"], label=i["station_id"][1])
+
+plt.legend()
+plt.title("Risk score Trends through year per station")
+plt.xlabel("Month")
+plt.ylabel("Risk score")
+plt.xticks(rotation=45)
+plt.savefig("plots_and_fiqures/Month_based_risk_sc.png")
+#plt.show()
 
 all_stations_month_avg = month_avg("place",1)
 
@@ -464,9 +498,11 @@ plt.bar(all_stations_month_avg.index,values_month_avg)
 plt.xlabel("month")
 plt.ylabel("Risk_score")
 plt.title("Monthly risk_score")
-plt.show()
+plt.savefig("plots_and_fiqures/Month_based_risk_colloctive_sc.png")
+#plt.show()
 
 plt.figure(figsize=(10,7))
+
 risk_score_all = df_combined["risk_score_model"].to_list()
 stations_lista = df_combined["location"].to_list()
 plt.bar(stations_lista,risk_score_all, width=0.5)
@@ -475,19 +511,40 @@ plt.ylabel("Risk_score")
 plt.title("risk_score for each station")
 plt.xticks(rotation = 90)
 plt.tight_layout()
-plt.show()
+plt.savefig("plots_and_fiqures/Risk_score_of_each_stat.png")
+#plt.show()
+
+
+y = (df_day_avgs["Maximum gust speed [m/s]"] > (df_day_avgs["Maximum gust speed [m/s]"].mean())).astype(int)
+day_cp = df_day_avgs.drop(["Maximum wind speed [m/s]"],axis=1)
+df_scaled = scale_func(day_cp)
+risk_score_df_day = risk_score_calc(df_scaled,y)
+
 
 plt.figure(figsize=(10,5))
-
+plt.subplot(1,2,1)
 plt.plot(df_day_avgs.index, df_day_avgs["Wind speed [m/s]"], label="Mean Wind")
+#print(df_day_avgs['Wind speed [m/s]_std'])
+#lower = df_day_avgs["Wind speed [m/s]"] - df_day_avgs['Wind speed [m/s]_std']
+#upper = df_day_avgs["Wind speed [m/s]"] + df_day_avgs['Wind speed [m/s]_std']
 
+#plt.fill_between(df_day_avgs.index, lower, upper, color='gray', alpha=0.3)
 plt.legend()
 plt.title("Wind Trends during one day")
 plt.xlabel("Hours")
 plt.ylabel("Wind (m/s)")
 plt.xticks(rotation=45)
 
-plt.show()
+plt.subplot(1,2,2)
+plt.plot(risk_score_df_day.index, risk_score_df_day["risk_score_model"], label="score")
+
+plt.legend()
+plt.title("Risk score Trends during one day")
+plt.xlabel("Hours")
+plt.ylabel("score")
+plt.xticks(rotation=45)
+plt.savefig("plots_and_fiqures/day_wind_vs_score.png")
+#plt.show()
 
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
 
