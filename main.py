@@ -324,7 +324,7 @@ nx.draw_networkx_edges(G, pos)
 nx.draw_networkx_labels(G, pos)
 
 nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
-
+plt.tight_layout()
 #nx.draw_networkx_edge_labels(G,pos,edge_labels=labels,connectionstyle="arc3")
 plt.savefig("plots_and_fiqures/network.png")
 plt.show()
@@ -385,6 +385,15 @@ critical = df_analysis[
 
 print("critical locations in network: ")
 print(critical)
+color_map = []
+for node in G:
+    if node in critical["location"].to_list():
+        color_map.append("red")
+    else:
+        color_map.append("blue")
+        
+nx.draw(G,pos, node_color=color_map, with_labels=True)
+plt.show()
 
 #-----------------Task 11-----------------------------------
 #df_all_wind has all of the wind data in one frame this can be groubed() with datetime
