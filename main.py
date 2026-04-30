@@ -573,45 +573,50 @@ plt.savefig("plots_and_fiqures/day_wind_vs_score.png")
 
 df_day_avgs_year = day_avg_year("location",1)
 
-y = (df_day_avgs_year["Wind speed [m/s]"] > (df_day_avgs_year["Wind speed [m/s]"].mean())).astype(int)
+y = (df_day_avgs_year.groupby("day")["Maximum gust speed [m/s]"].max() > 9).astype(int)
 day_cp = df_day_avgs_year.drop(["Maximum wind speed [m/s]"],axis=1)
 df_scaled = scale_func(day_cp)
 risk_score_df_day_year = risk_score_calc(df_scaled,y)
 
 risk_score_df_day_year["rolling_mean_5"] = (
     risk_score_df_day_year["risk_score_model"]
-    .rolling(window=10)
+    .rolling(window=5)
+    .mean()
+    .reset_index(level=0, drop=True)
+)
+
+df_day_avgs_year["rolling_mean_5"] = (
+    df_day_avgs_year["Wind speed [m/s]"]
+    .rolling(window=20)
     .mean()
     .reset_index(level=0, drop=True)
 )
 
 #print(df_day_avgs_year.info())
-plt.figure(figsize=(10,5))
+plt.figure(figsize=(15,5))
 plt.subplot(1,2,1)
-plt.plot(df_day_avgs_year.index, df_day_avgs_year["Wind speed [m/s]"], label="Mean Wind")
-
+plt.plot(df_day_avgs_year.index, df_day_avgs_year["rolling_mean_5"], label="Mean Wind")
 
 plt.legend()
 plt.title("Wind Trends during year")
-plt.xlabel("Hours")
+plt.xlabel("days")
 plt.ylabel("Wind (m/s)")
 plt.xticks(rotation=45)
 
-#plt.show()
-
 plt.subplot(1,2,2)
 plt.plot(risk_score_df_day_year.index, risk_score_df_day_year["rolling_mean_5"], label="score")
-
 plt.legend()
 plt.title("Risk score Trends during day")
-plt.xlabel("Hours")
+plt.xlabel("days")
 plt.ylabel("score")
 plt.xticks(rotation=45)
-plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
+plt.tight_layout()
 #plt.show()
+plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
+
 
 tulos = df_all_wind[df_all_wind["Maximum wind speed [m/s]"] > 23]
-print(tulos)
+#print(tulos)
 
 
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
