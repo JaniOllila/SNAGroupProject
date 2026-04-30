@@ -329,6 +329,7 @@ plt.tight_layout()
 plt.savefig("plots_and_fiqures/network.png")
 #plt.show()
 
+nx.write_gexf(G, "graph.gexf")
 #-----------------Task 9-----------------------------------
 
 degrees = dict(G.degree())
@@ -635,3 +636,7 @@ print(tulos)
 #-----------------Task 11-----------------------------------
 
 #Added risk score to each node but probably easier to jus get them from "df_combined"
+
+
+
+#-----------------Task 12-----------------------------------
