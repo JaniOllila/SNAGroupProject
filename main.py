@@ -329,6 +329,7 @@ plt.tight_layout()
 plt.savefig("plots_and_fiqures/network.png")
 #plt.show()
 
+nx.write_gexf(G, "graph.gexf")
 #-----------------Task 9-----------------------------------
 
 degrees = dict(G.degree())
@@ -640,3 +641,7 @@ tulos = df_all_wind[df_all_wind["Maximum wind speed [m/s]"] > 23]
 #-----------------Task 11-----------------------------------
 
 #Added risk score to each node but probably easier to jus get them from "df_combined"
+
+
+
+#-----------------Task 12-----------------------------------
