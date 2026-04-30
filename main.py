@@ -327,7 +327,7 @@ nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
 plt.tight_layout()
 #nx.draw_networkx_edge_labels(G,pos,edge_labels=labels,connectionstyle="arc3")
 plt.savefig("plots_and_fiqures/network.png")
-plt.show()
+#plt.show()
 
 #-----------------Task 9-----------------------------------
 
@@ -351,7 +351,6 @@ connect_comp = nx.connected_components(G)
 #print(avg_clust)
 #print(connect_comp)
 
-
 d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp}
 #the data is not in dataframes yet might do it but seem unnessesary
 
@@ -369,8 +368,6 @@ df_centrality = pd.DataFrame({
     "betweenness_centrality": list(bet_cent.values()),
     "closeness_centrality": list(clo_cent.values())
 })
-
-
 
 df_ranked = df_centrality.sort_values(by="betweenness_centrality", ascending=False)
 
@@ -393,6 +390,8 @@ for node in G:
         color_map.append("blue")
         
 nx.draw(G,pos, node_color=color_map, with_labels=True)
+nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
+plt.savefig("plots_and_fiqures/network2.png")
 plt.show()
 
 #-----------------Task 11-----------------------------------
@@ -432,6 +431,24 @@ def day_avg(key, all_wind=0):
     df["datetime"] = pd.to_datetime(df["datetime"])
 
     df["day"] = df["datetime"].dt.hour
+    
+    day_avg = df.groupby("day").mean(numeric_only=True)
+    day_std= df.groupby("day").std(numeric_only=True)
+
+    day_std = day_std.drop(day_std.columns.difference(["Wind speed [m/s]"]),axis=1)
+    day_avg = day_avg.join(day_std, rsuffix="_std")
+    
+    return day_avg
+
+def day_avg_year(key, all_wind=0):
+    if(all_wind == 0):
+        df = pd.read_csv("Parsed_wind datasets/"+key)
+    else:
+        df = df_all_wind
+
+    df["datetime"] = pd.to_datetime(df["datetime"])
+
+    df["day"] = df["datetime"].dt.day_of_year
     
     day_avg = df.groupby("day").mean(numeric_only=True)
     day_std= df.groupby("day").std(numeric_only=True)
@@ -524,7 +541,7 @@ plt.savefig("plots_and_fiqures/Risk_score_of_each_stat.png")
 #plt.show()
 
 
-y = (df_day_avgs["Maximum gust speed [m/s]"] > (df_day_avgs["Maximum gust speed [m/s]"].mean())).astype(int)
+y = (df_day_avgs["Wind speed [m/s]"] > (df_day_avgs["Wind speed [m/s]"].mean())).astype(int)
 day_cp = df_day_avgs.drop(["Maximum wind speed [m/s]"],axis=1)
 df_scaled = scale_func(day_cp)
 risk_score_df_day = risk_score_calc(df_scaled,y)
@@ -548,12 +565,54 @@ plt.subplot(1,2,2)
 plt.plot(risk_score_df_day.index, risk_score_df_day["risk_score_model"], label="score")
 
 plt.legend()
-plt.title("Risk score Trends during one day")
+plt.title("Risk score Trends during day")
 plt.xlabel("Hours")
 plt.ylabel("score")
 plt.xticks(rotation=45)
 plt.savefig("plots_and_fiqures/day_wind_vs_score.png")
+
+df_day_avgs_year = day_avg_year("location",1)
+
+y = (df_day_avgs_year["Wind speed [m/s]"] > (df_day_avgs_year["Wind speed [m/s]"].mean())).astype(int)
+day_cp = df_day_avgs_year.drop(["Maximum wind speed [m/s]"],axis=1)
+df_scaled = scale_func(day_cp)
+risk_score_df_day_year = risk_score_calc(df_scaled,y)
+
+risk_score_df_day_year["rolling_mean_5"] = (
+    risk_score_df_day_year["risk_score_model"]
+    .rolling(window=10)
+    .mean()
+    .reset_index(level=0, drop=True)
+)
+
+#print(df_day_avgs_year.info())
+plt.figure(figsize=(10,5))
+plt.subplot(1,2,1)
+plt.plot(df_day_avgs_year.index, df_day_avgs_year["Wind speed [m/s]"], label="Mean Wind")
+
+
+plt.legend()
+plt.title("Wind Trends during year")
+plt.xlabel("Hours")
+plt.ylabel("Wind (m/s)")
+plt.xticks(rotation=45)
+
 #plt.show()
+
+plt.subplot(1,2,2)
+plt.plot(risk_score_df_day_year.index, risk_score_df_day_year["rolling_mean_5"], label="score")
+
+plt.legend()
+plt.title("Risk score Trends during day")
+plt.xlabel("Hours")
+plt.ylabel("score")
+plt.xticks(rotation=45)
+plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
+#plt.show()
+
+tulos = df_all_wind[df_all_wind["Maximum wind speed [m/s]"] > 23]
+print(tulos)
+
 
 #df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
 
