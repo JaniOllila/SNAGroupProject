@@ -90,56 +90,94 @@ for i, key in enumerate(risk_scores["location"]):
 for source, target in edge_lookup.keys():
     adj_list[source].append(target)
 
-sorted = risk_scores.sort_values("risk_score_model", ascending=False)
-queue_secondary = list(sorted["location"])
-
-print(queue_secondary)
 
 
 #-----------------Task 13-----------------------------------
 
-def one_simulation(queue, failed, threshold, adjacency_list): 
-    test = queue.pop(0)
-    fail = np.random.rand() < threshold
-    if fail:     
+def one_simulation(queue_propagation, risk_score, failed, adjacency_list, propagation_matrix, node_id, 
+                   queue_independent=None, primary=True):
+    if not primary: 
+        test = queue_independent.pop(0)
+        if test in failed:
+            return
+        
+        fail = np.random.rand() < risk_score["failure_probability"][node_id[test]]
+        if not fail:
+            return
+          
         failed.append(test)
         for node in adjacency_list[test]:
             if node not in failed:
-                queue.append(node)
-                
+                queue_propagation.append((test, node))
+        return
+
+
+    failure_source, test = queue_propagation.pop(0)
+    fail = np.random.rand() < propagation_matrix[node_id[failure_source], node_id[test]]
+    if not fail:
+        return
+
+    failed.append(test)
+    for node in adjacency_list[test]:
+        if node not in failed:
+            queue_propagation.append((test, node))
+
+    
 
 def simulate_propagation(risk_score, propagation_matrix, adjacency_list, n_simulations=10000):
     sets = []
     for i in range(n_simulations):
         failed = []
-        queue_primary = []
-        sorted = risk_score.sort_values("risk_score_model", ascending=False)
-        queue_secondary = list(sorted["location"])
+        queue_propagation = []
+        sorted_risks = risk_score.sort_values("risk_score_model", ascending=False)
+        queue_independent = list(sorted_risks["location"])
 
-        while len(queue) > 0:
-            test = queue.pop(0)
-            fail = np.random.rand() < risk_score["failure_probability"][node_id[test]]
-            if not fail:
+        while len(queue_independent) > 0 or len(queue_propagation) > 0:
+            if len(queue_propagation) > 0:
+                one_simulation(queue_propagation, risk_score, failed, adjacency_list, propagation_matrix, node_id)
                 continue
-                
-            failures.append(test)
-            for node in adjacency_list[test]:
-                if node not in failures:
-                    queue.append(node)
+
+            one_simulation(queue_propagation, risk_score, failed, adjacency_list, propagation_matrix, node_id, queue_independent, primary=False)
         
-        sets.append(failures)
+        sets.append(failed)
 
-    return None
+    return sets
+
+results = simulate_propagation(risk_scores, propagation_matrix, adj_list)
+
+sizes = [len(s) for s in results]
+print(f"Mean failures per simulation: {np.mean(sizes):.2f}")
+print(f"P(zero failures): {np.mean([s == 0 for s in sizes]):.3f}")
+print(f"P(propagation > 3): {np.mean([s > 3 for s in sizes]):.3f}")
+
+# Per-turbine failure rate
+all_locations = list(risk_scores["location"])
+failure_rates = {}
+
+for loc in all_locations:
+    rate = np.mean([loc in scenario for scenario in results])
+    failure_rates[loc] = rate
+    #print(f"{loc}: {rate*100:.1f}% of simulations")
+
+def plot_propagation(failed, risk_score, edgelist, title="Propagation Simulation"):
+    graph = nx.from_pandas_edgelist(edgelist, "source", "target", edge_attr="weight")
+    
+    pos = nx.spring_layout(graph, seed=42)  # or nx.kamada_kawai_layout(G)
+    
+    node_colors = ["red" if node in failed else "steelblue" for node in graph.nodes()]
+    node_sizes  = [risk_score["risk_score_model"][node_id[node]] * 1000 for node in graph.nodes()]
+    edge_weights = [graph[u][v]["weight"] * 3 for u, v in G.edges()]
+
+    nx.draw_networkx_nodes(graph, pos, node_color=node_colors, node_size=node_sizes)
+    nx.draw_networkx_labels(graph, pos, font_size=8, font_color="white")
+    nx.draw_networkx_edges(graph, pos, width=edge_weights, alpha=0.5)
+    
+    plt.title(title)
+    plt.axis("off")
+    plt.show()
+
+fig = plt.clf()
+plot_propagation(results[0], risk_scores, edgelist)
 
 
-
-# Results
-print(f"Mean turbines failed per simulation: {cascade_sizes.mean():.2f}")
-print(f"Max cascade size: {cascade_sizes.max()}")
-print(f"P(at least 1 failure): {(cascade_sizes > 0).mean():.3f}")
-print(f"P(more than 3 failures): {(cascade_sizes > 3).mean():.3f}")
-
-# Most vulnerable turbines (how often each turbine ends up failed)
-failure_rates = failed_sets.mean(axis=0)
-for i, loc in enumerate(risk_scores["location"]):
-    print(f"{loc}: failed in {failure_rates[i]*100:.1f}% of simulations")
+#-----------------Task 14-----------------------------------
