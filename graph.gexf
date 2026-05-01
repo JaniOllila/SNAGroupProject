@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <gexf xmlns="http://www.gexf.net/1.2draft" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gexf.net/1.2draft http://www.gexf.net/1.2draft/gexf.xsd" version="1.2">
-  <meta lastmodifieddate="2026-04-30">
+  <meta lastmodifieddate="2026-05-01">
     <creator>NetworkX 3.2.1</creator>
   </meta>
   <graph defaultedgetype="undirected" mode="static" name="">
@@ -96,37 +96,37 @@
       </node>
     </nodes>
     <edges>
-      <edge source="Huikku Hailuoto" target="Ii  Kuivaniemi tv" id="0" weight="0.9878880503988797" />
-      <edge source="Huikku Hailuoto" target="Kemi Ajos" id="1" weight="0.9878880503988797" />
-      <edge source="Huikku Hailuoto" target="Kokkola tv 1 ja 2" id="2" weight="0.40058746595386996" />
-      <edge source="Huikku Hailuoto" target="Lumijoki" id="3" weight="0.4253132270844019" />
-      <edge source="Huikku Hailuoto" target="Oulunsalo Riutunkari tv" id="4" weight="0.4253132270844019" />
-      <edge source="Huikku Hailuoto" target="Tornio tv" id="5" weight="0.42685516392857326" />
-      <edge source="Huittinen  Pahkionvuori tv" target="Kokkola tv 1 ja 2" id="6" weight="0.9644065754604167" />
-      <edge source="Huittinen  Pahkionvuori tv" target="Olkiluoto tv" id="7" weight="0.40040061756794726" />
-      <edge source="Huittinen  Pahkionvuori tv" target="Summa tv" id="8" weight="0.9633881073064194" />
-      <edge source="Huittinen  Pahkionvuori tv" target="Tahkoluoto Offshore tv" id="9" weight="0.4077991567404269" />
-      <edge source="Huittinen  Pahkionvuori tv" target="Tahkoluoto tv" id="10" weight="0.4077991567404269" />
-      <edge source="Ii  Kuivaniemi tv" target="Kemi Ajos" id="11" weight="0.9999999999999999" />
-      <edge source="Ii  Kuivaniemi tv" target="Kokkola tv 1 ja 2" id="12" weight="0.4123039162349996" />
-      <edge source="Ii  Kuivaniemi tv" target="Lumijoki" id="13" weight="0.4243966461601745" />
-      <edge source="Ii  Kuivaniemi tv" target="Oulunsalo Riutunkari tv" id="14" weight="0.4243966461601745" />
-      <edge source="Ii  Kuivaniemi tv" target="Tornio tv" id="15" weight="0.4198744548092529" />
-      <edge source="Kemi Ajos" target="Kokkola tv 1 ja 2" id="16" weight="0.4123039162349996" />
-      <edge source="Kemi Ajos" target="Lumijoki" id="17" weight="0.4243966461601745" />
-      <edge source="Kemi Ajos" target="Oulunsalo Riutunkari tv" id="18" weight="0.4243966461601745" />
-      <edge source="Kemi Ajos" target="Tornio tv" id="19" weight="0.4198744548092529" />
-      <edge source="Kokkola tv 1 ja 2" target="Lumijoki" id="20" weight="0.9673897870712495" />
-      <edge source="Kokkola tv 1 ja 2" target="Oulunsalo Riutunkari tv" id="21" weight="0.9673897870712495" />
-      <edge source="Kokkola tv 1 ja 2" target="Tahkoluoto Offshore tv" id="22" weight="0.4695308169109073" />
-      <edge source="Kokkola tv 1 ja 2" target="Tahkoluoto tv" id="23" weight="0.4695308169109073" />
-      <edge source="Kokkola tv 1 ja 2" target="Tornio tv" id="24" weight="0.9662717710357873" />
+      <edge source="Huikku Hailuoto" target="Ii  Kuivaniemi tv" id="0" weight="0.9596268346629325" />
+      <edge source="Huikku Hailuoto" target="Kemi Ajos" id="1" weight="0.9596268346629325" />
+      <edge source="Huikku Hailuoto" target="Kokkola tv 1 ja 2" id="2" weight="-0.9980417801537667" />
+      <edge source="Huikku Hailuoto" target="Lumijoki" id="3" weight="-0.9156225763853268" />
+      <edge source="Huikku Hailuoto" target="Oulunsalo Riutunkari tv" id="4" weight="-0.9156225763853268" />
+      <edge source="Huikku Hailuoto" target="Tornio tv" id="5" weight="-0.9104827869047557" />
+      <edge source="Huittinen  Pahkionvuori tv" target="Kokkola tv 1 ja 2" id="6" weight="0.8813552515347228" />
+      <edge source="Huittinen  Pahkionvuori tv" target="Olkiluoto tv" id="7" weight="-0.9986646081068424" />
+      <edge source="Huittinen  Pahkionvuori tv" target="Summa tv" id="8" weight="0.8779603576880648" />
+      <edge source="Huittinen  Pahkionvuori tv" target="Tahkoluoto Offshore tv" id="9" weight="-0.9740028108652435" />
+      <edge source="Huittinen  Pahkionvuori tv" target="Tahkoluoto tv" id="10" weight="-0.9740028108652435" />
+      <edge source="Ii  Kuivaniemi tv" target="Kemi Ajos" id="11" weight="0.9999999999999998" />
+      <edge source="Ii  Kuivaniemi tv" target="Kokkola tv 1 ja 2" id="12" weight="-0.9589869458833346" />
+      <edge source="Ii  Kuivaniemi tv" target="Lumijoki" id="13" weight="-0.9186778461327516" />
+      <edge source="Ii  Kuivaniemi tv" target="Oulunsalo Riutunkari tv" id="14" weight="-0.9186778461327516" />
+      <edge source="Ii  Kuivaniemi tv" target="Tornio tv" id="15" weight="-0.9337518173024902" />
+      <edge source="Kemi Ajos" target="Kokkola tv 1 ja 2" id="16" weight="-0.9589869458833346" />
+      <edge source="Kemi Ajos" target="Lumijoki" id="17" weight="-0.9186778461327516" />
+      <edge source="Kemi Ajos" target="Oulunsalo Riutunkari tv" id="18" weight="-0.9186778461327516" />
+      <edge source="Kemi Ajos" target="Tornio tv" id="19" weight="-0.9337518173024902" />
+      <edge source="Kokkola tv 1 ja 2" target="Lumijoki" id="20" weight="0.8912992902374984" />
+      <edge source="Kokkola tv 1 ja 2" target="Oulunsalo Riutunkari tv" id="21" weight="0.8912992902374984" />
+      <edge source="Kokkola tv 1 ja 2" target="Tahkoluoto Offshore tv" id="22" weight="-0.7682306102969755" />
+      <edge source="Kokkola tv 1 ja 2" target="Tahkoluoto tv" id="23" weight="-0.7682306102969755" />
+      <edge source="Kokkola tv 1 ja 2" target="Tornio tv" id="24" weight="0.8875725701192911" />
       <edge source="Lumijoki" target="Oulunsalo Riutunkari tv" id="25" weight="1.0" />
-      <edge source="Lumijoki" target="Tornio tv" id="26" weight="0.9989440461969332" />
-      <edge source="Olkiluoto tv" target="Tahkoluoto Offshore tv" id="27" weight="0.9919039890982768" />
-      <edge source="Olkiluoto tv" target="Tahkoluoto tv" id="28" weight="0.9919039890982768" />
-      <edge source="Oulunsalo Riutunkari tv" target="Tornio tv" id="29" weight="0.9989440461969332" />
-      <edge source="Tahkoluoto Offshore tv" target="Tahkoluoto tv" id="30" weight="1.0" />
+      <edge source="Lumijoki" target="Tornio tv" id="26" weight="0.9964801539897777" />
+      <edge source="Olkiluoto tv" target="Tahkoluoto Offshore tv" id="27" weight="0.9730132969942561" />
+      <edge source="Olkiluoto tv" target="Tahkoluoto tv" id="28" weight="0.9730132969942561" />
+      <edge source="Oulunsalo Riutunkari tv" target="Tornio tv" id="29" weight="0.9964801539897777" />
+      <edge source="Tahkoluoto Offshore tv" target="Tahkoluoto tv" id="30" weight="1.0000000000000002" />
     </edges>
   </graph>
 </gexf>

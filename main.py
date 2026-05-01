@@ -7,6 +7,7 @@ from sklearn.preprocessing import StandardScaler
 import networkx as nx
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.linear_model import LogisticRegression
+import matplotlib.pyplot as plt
 
 stations = {
     "Hailuoto":(65, 24.7),
@@ -95,15 +96,25 @@ for loc, lat, long in list_lat_long:
 filename = "turbine_dataset"
 fields = ['location', 'latitude','longitude','station_id']
 
-csv_write(list_loc_lat_long_id, fields, filename)
-df_dict = {}
-for key in stations_dataset:
-    df = read_wind_dataset(key)
-    df_dict.update({key:df})
+#csv_write(list_loc_lat_long_id, fields, filename)
+#df_dict = {}
+#for key in stations_dataset:
+#    df = read_wind_dataset(key)
+#    df_dict.update({key:df})
 
+#create one pandas dataframe containing all wind data and write csv file
+#ys = []
+#for key in df_dict:
+#    y = df_dict[key]
+#    ys.append(y)
+
+#df_all_wind_tocsv = pd.concat(ys)
+
+#df_all_wind_tocsv.to_csv("csv_all_wind.csv", index=False)
+
+df_all_wind = pd.read_csv("csv_all_wind.csv")
 
 #-----------------Task 4-----------------------------------
-#kinda useless because task 5
 
 turbines_df = pd.read_csv(filename)
 
@@ -122,7 +133,7 @@ single_vector = pd.concat([turbines_df, sums_df], axis=1)
 
 
 single_vector.drop("Observation station", axis=1, inplace=True)
-single_vector.to_csv("results", index=False)
+#single_vector.to_csv("results", index=False)
 
 #-----------------Task 5-----------------------------------
 
@@ -169,7 +180,9 @@ data = pd.concat(derived_list)
 data2 = pd.concat(rolling_features_list)
 
 single_vector_rolling_derived = pd.concat([data, data2], axis=1)
+single_vector_rolling_derived_cp = single_vector_rolling_derived.loc[:, ~single_vector_rolling_derived.columns.duplicated()]
 
+print(single_vector_rolling_derived)
 # drop non-numeric column and save it for later
 ids = single_vector_rolling_derived["Observation station"]
 ids = ids.loc[:, ~ids.columns.duplicated()]
@@ -189,18 +202,7 @@ def scale_func(X_scale_this):
       
 X_scaled = scale_func(X)
 
-X_scaled_unmodf = X_scaled
-
-
 #-----------------Task 6-----------------------------------
-#every data frame in one dataframe
-
-ys = []
-for key in df_dict:
-    y = df_dict[key]
-    ys.append(y)
-
-df_all_wind = pd.concat(ys)
 
 def risk_score_calc(scaled_data, y_list):
 
@@ -235,7 +237,12 @@ turbines_df["Observation station"] = list_ids
 
 df_combined = pd.merge(turbines_df, X_scaled, on="Observation station", how="inner")
 
+single_vector_rolling_derived_cp = pd.merge(turbines_df, single_vector_rolling_derived_cp, on="Observation station", how="inner")
+single_vector_rolling_derived_cp["risk_score_model"] = df_combined["risk_score_model"]
+
 df_combined.to_csv("combined.csv", index=False)
+
+single_vector_rolling_derived_cp.to_csv("Unscaled_combined.csv", index=False)
 
 G = nx.Graph()
 
@@ -262,24 +269,12 @@ for i, row1 in df_combined.iterrows():
                     weight=1
                 )
         
-print(G.number_of_nodes())
-print(G.number_of_edges())
-print(G.nodes(data=True))
+
+
 
 #score_dict = dict(G.nodes(data="risk_sc"))
 #for node in score_dict:
 #    print(score_dict[node])
-
-import matplotlib.pyplot as plt
-
-#plt.figure(figsize=(10,7))
-
-#pos1 = nx.spring_layout(G, iterations=30)
-#pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
-
-#nx.draw(G,pos, with_labels=True, node_size=200)
-#plt.savefig("plots and fiqures/network")
-#plt.show()
 
 #-----------------Task 8-----------------------------------
 
@@ -287,7 +282,7 @@ df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mea
 
 similarity_matrix = cosine_similarity(df_test)
 
-alpha = 0.3
+alpha = 1
 
 df = df_combined
 
@@ -299,15 +294,19 @@ for i in range(len(df)):
 
         dist_score = 1 / (1 + dist)  # normalize distance to calc weight accurately
 
-        weight = alpha * sim + (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
+        weight1 = alpha * sim #+ (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
 
         if(G.has_edge(df.iloc[i]["location"],df.iloc[j]["location"])):
-            G[df.iloc[i]["location"]][df.iloc[j]["location"]]["weight"] = weight
+            G[df.iloc[i]["location"]][df.iloc[j]["location"]]["weight"] = weight1
+        #elif(weight1>0.9):
+        #    G.add_edge(df.iloc[i]["location"],df.iloc[j]["location"],weight=weight1)
 
 #For edge weights
 #for u, v, d in G.edges(data=True):
 #    print(u, v, d["weight"])
-
+print(G.number_of_nodes())
+print(G.number_of_edges())
+print(G.nodes(data=True))
 plt.figure(figsize=(10,7))
 
 pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
@@ -348,9 +347,6 @@ df_degree = pd.DataFrame({
 
 avg_clust = nx.average_clustering(G, weight="weight")
 connect_comp = nx.connected_components(G)
-
-#print(avg_clust)
-#print(connect_comp)
 
 d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp}
 #the data is not in dataframes yet might do it but seem unnessesary
@@ -396,14 +392,6 @@ plt.savefig("plots_and_fiqures/network2.png")
 plt.show()
 
 #-----------------Task 11-----------------------------------
-#df_all_wind has all of the wind data in one frame this can be groubed() with datetime
-#then roll thourg dataset and calc mean for week/month and if its above certain treshold
-#can identify month or weeks with high gust, wind and maxminm wind speeds.(here as reminder)
-#risk_score_calc to calc risk scores this function is kinda ok but might not work well because uses .max gust speed.
-#Many other functins need to be made from one time use code to make work (here as reminder)
-
-
-#need to automate and probaply should calc std for each month more reliable results.
 
 def month_avg(key, all_wind=0):
     if(all_wind == 0):
@@ -616,31 +604,12 @@ plt.tight_layout()
 plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
 
 
-tulos = df_all_wind[df_all_wind["Maximum wind speed [m/s]"] > 23]
+#tulos = df_all_wind[df_all_wind["Maximum gust speed [m/s]"] > 25]
 #print(tulos)
-
-
-#df_all_wind["datetime"] = pd.to_datetime(df_all_wind["datetime"])
-
-#df_all_wind["month"] = df_all_wind["datetime"].dt.month
-
-#df_monthly = df_all_wind.groupby(
-#    ["Observation station", pd.Grouper(key="datetime", freq="MS")]).agg({
-#        "Wind speed [m/s]": ["mean", "std"],
-#        "Maximum gust speed [m/s]": "max"
-#    }).reset_index()
-
-#print(df_monthly)
-
-#df_scaled = scale_func(df_monthly)
-#y = (df_monthly["Maximum gust speed [m/s]"] > 20).astype(int)
-#risk_score_df_monthly = risk_score_calc(df_scaled,y)
-
-#rint(risk_score_df_monthly)
 
 #-----------------Task 11-----------------------------------
 
-#Added risk score to each node but probably easier to jus get them from "df_combined"
+
 
 
 
