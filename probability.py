@@ -1,10 +1,14 @@
+"""
+Module for task 12, 13, 14, 15. 
+Includes most functions and impelentation of probabilities and simulation
+"""
+
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import os 
 import networkx as nx
 import scipy
-import random
 from main import pos as position
 
 #-----------------Task 12-----------------------------------
@@ -39,8 +43,6 @@ risk_scores.insert(2, "failure_probability", risk_scores["risk_score_model"]
 
 
 edgelist = nx.to_pandas_edgelist(G)
-#print(edgelist)
-#print(risk_scores)
 
 #Creating propagation matrix where row is source of failure
 #and column is the target. Values in cells are probabilities for failure propagation. 
@@ -61,10 +63,18 @@ for i in range(12):
         weight = np.abs(edge_lookup.get((source, target), 0))
         propagation_matrix[i,j] = weight * risk_scores["risk_score_model"][j]
 
-print(propagation_matrix)
-
 def display_heatmap(matrix, risk_score, title, save=False, save_path=None):
-    fig, ax = plt.subplots(figsize=(8, 6))
+    """
+    Function for displayn 12 by 12 heatmap
+
+    param: 
+    matrix: np.matrix
+    riks_score: pd.dataframe
+    title: string
+    save: boolean
+    save_path: string
+    """
+    _, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(matrix, cmap="YlOrRd")
 
     plt.colorbar(im, ax=ax)
@@ -242,8 +252,11 @@ display_heatmap(heatmap_for_propagation, risk_scores,
                 "Heatmap for propagation simulation [row → column]",
                 save=True, save_path="plots_and_fiqures/simulation_propagation.png")
 random_index = int(np.random.randint(10000))
-plot_propagation(results[random_index], risk_scores, edgelist)
 
-plot_failure_rates(results, risk_scores)
+#plot_propagation(results[random_index], risk_scores, edgelist)
+
+#plot_failure_rates(results, risk_scores)
 
 #-----------------Task 14-----------------------------------
+betweenness_centrality = nx.betweenness_centrality(G)
+print(betweenness_centrality)
