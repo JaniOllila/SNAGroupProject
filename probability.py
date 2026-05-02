@@ -4,8 +4,11 @@ import matplotlib.pyplot as plt
 import os 
 import networkx as nx
 import scipy
+import random
+from main import pos as position
 
 #-----------------Task 12-----------------------------------
+plt.close("all")
 
 CUT_IN_THRESHOLD = 3
 CUT_OUT_THRESHOLD = 25
@@ -27,7 +30,7 @@ for file in os.listdir(DIRECTORY):
 k, loc, scale = scipy.stats.weibull_min.fit(gust_speeds, floc=0)
 overall_failure_probability = scipy.stats.weibull_min.cdf(CUT_IN_THRESHOLD, k, loc=0, scale=scale) + (1 - 
                             scipy.stats.weibull_min.cdf(CUT_OUT_THRESHOLD, k, loc=0, scale=scale))
-print(overall_failure_probability)
+#print(overall_failure_probability)
 
 risk_scores = pd.read_csv("combined.csv", usecols=["location", "risk_score_model"])
 #Adding failure probability for each turbine
@@ -37,7 +40,7 @@ risk_scores.insert(2, "failure_probability", risk_scores["risk_score_model"]
 
 edgelist = nx.to_pandas_edgelist(G)
 #print(edgelist)
-print(risk_scores)
+#print(risk_scores)
 
 #Creating propagation matrix where row is source of failure
 #and column is the target. Values in cells are probabilities for failure propagation. 
@@ -55,30 +58,36 @@ for i in range(12):
         
         source = risk_scores["location"][i]
         target = risk_scores["location"][j]
-        weight = edge_lookup.get((source, target), 0)
+        weight = np.abs(edge_lookup.get((source, target), 0))
         propagation_matrix[i,j] = weight * risk_scores["risk_score_model"][j]
 
-# Display of the propagation matrix
-fig, ax = plt.subplots(figsize=(8, 6))
-im = ax.imshow(propagation_matrix, cmap="YlOrRd")
+print(propagation_matrix)
 
-plt.colorbar(im, ax=ax)
+def display_heatmap(matrix, risk_score, title, save=False, save_path=None):
+    fig, ax = plt.subplots(figsize=(8, 6))
+    im = ax.imshow(matrix, cmap="YlOrRd")
 
-ax.set_xticks(range(12))
-ax.set_yticks(range(12))
-ax.set_xticklabels(risk_scores["location"], rotation=45, ha="right")
-ax.set_yticklabels(risk_scores["location"])
+    plt.colorbar(im, ax=ax)
 
-for i in range(12):
-    for j in range(12):
-        ax.text(j, i, f"{propagation_matrix[i, j]:.3f}",
-                ha="center", va="center", fontsize=7)
+    ax.set_xticks(range(12))
+    ax.set_yticks(range(12))
+    ax.set_xticklabels(risk_score["location"], rotation=45, ha="right")
+    ax.set_yticklabels(risk_score["location"])
 
-ax.set_title("Propagation Matrix [i → j]")
-plt.tight_layout()
-plt.savefig("plots_and_fiqures/propagation_matrix.png")
-#plt.show()
+    for i in range(12):
+        for j in range(12):
+            ax.text(j, i, f"{matrix[i, j]:.3f}",
+                    ha="center", va="center", fontsize=7)
 
+    ax.set_title(title)
+    plt.tight_layout()
+    if save and save_path is not None:
+        plt.savefig(save_path)
+
+    plt.show()
+
+display_heatmap(propagation_matrix, risk_scores, "Propagation Matrix [i → j]",
+                 save=True, save_path="plots_and_fiqures/propagation_matrix.png")
 #-----------------Task 12-----------------------------------
 adj_list = {}
 node_id = {}
@@ -162,22 +171,79 @@ for loc in all_locations:
 def plot_propagation(failed, risk_score, edgelist, title="Propagation Simulation"):
     graph = nx.from_pandas_edgelist(edgelist, "source", "target", edge_attr="weight")
     
-    pos = nx.spring_layout(graph, seed=42)  # or nx.kamada_kawai_layout(G)
+    pos = position
     
     node_colors = ["red" if node in failed else "steelblue" for node in graph.nodes()]
     node_sizes  = [risk_score["risk_score_model"][node_id[node]] * 1000 for node in graph.nodes()]
     edge_weights = [graph[u][v]["weight"] * 3 for u, v in G.edges()]
 
     nx.draw_networkx_nodes(graph, pos, node_color=node_colors, node_size=node_sizes)
-    nx.draw_networkx_labels(graph, pos, font_size=8, font_color="white")
+    nx.draw_networkx_labels(graph, pos, font_size=8, font_color="black")
     nx.draw_networkx_edges(graph, pos, width=edge_weights, alpha=0.5)
     
     plt.title(title)
     plt.axis("off")
     plt.show()
 
-fig = plt.clf()
-plot_propagation(results[0], risk_scores, edgelist)
+def plot_failure_rates(results, risk_score):
+    locations = risk_score["location"].values
+    failure_rates = [
+        np.mean([loc in s for s in results]) for loc in locations
+    ]
+    
+    # Sort by failure rate
+    sorted_idx = np.argsort(failure_rates)[::-1]
+    
+    fig, ax = plt.subplots(figsize=(10, 5))
+    bars = ax.bar(range(len(locations)), 
+                  [failure_rates[i] for i in sorted_idx],
+                  color="steelblue")
+    
+    ax.set_xticks(range(len(locations)))
+    ax.set_xticklabels([locations[i] for i in sorted_idx], rotation=45, ha="right")
+    ax.set_ylabel("Failure Rate")
+    ax.set_title("Per-Turbine Failure Rate Across Simulations")
+    ax.legend()
+    plt.tight_layout()
+    plt.show()
 
+def transition_heatmap(result_list, risk_score): 
+    heatmap = np.zeros((12, 12))
+    for i in range(12):
+        preceding = risk_score["location"][i]
+        encounters = []
+        for chase in result_list:
+            if preceding in chase:
+                encounters.append(chase)
+        for j in range(12):
+            if j==i:
+                continue
+            subsequent = risk_score["location"][j]
+            count = count_subsequent_indexes(encounters, preceding, subsequent)
+            heatmap[i, j] = count/len(encounters)
+    return heatmap
+
+def count_subsequent_indexes(check_list, preceding, subsequent):
+    count = 0
+    for scenario in check_list:
+        index = scenario.index(preceding)
+        try:
+            if scenario[index + 1] == subsequent:
+                count += 1
+        except IndexError, ValueError:
+            continue
+    
+    return count
+
+
+heatmap_for_propagation = transition_heatmap(results, risk_scores)
+
+display_heatmap(heatmap_for_propagation, risk_scores,
+                "Heatmap for propagation simulation [row → column]",
+                save=True, save_path="plots_and_fiqures/simulation_propagation.png")
+random_index = int(np.random.randint(10000))
+plot_propagation(results[random_index], risk_scores, edgelist)
+
+plot_failure_rates(results, risk_scores)
 
 #-----------------Task 14-----------------------------------
