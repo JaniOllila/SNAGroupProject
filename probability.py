@@ -230,7 +230,7 @@ def count_subsequent_indexes(check_list, preceding, subsequent):
         try:
             if scenario[index + 1] == subsequent:
                 count += 1
-        except IndexError, ValueError:
+        except (IndexError, ValueError):
             continue
     
     return count

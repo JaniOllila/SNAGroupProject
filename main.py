@@ -282,7 +282,7 @@ df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mea
 
 similarity_matrix = cosine_similarity(df_test)
 
-alpha = 1
+alpha = 0.5
 
 df = df_combined
 
@@ -294,7 +294,7 @@ for i in range(len(df)):
 
         dist_score = 1 / (1 + dist)  # normalize distance to calc weight accurately
 
-        weight1 = alpha * sim #+ (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
+        weight1 = alpha * sim + (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
 
         if(G.has_edge(df.iloc[i]["location"],df.iloc[j]["location"])):
             G[df.iloc[i]["location"]][df.iloc[j]["location"]]["weight"] = weight1
