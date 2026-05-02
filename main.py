@@ -282,7 +282,7 @@ df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mea
 
 similarity_matrix = cosine_similarity(df_test)
 
-alpha = 0.5
+alpha = 0.4
 
 df = df_combined
 
@@ -298,7 +298,8 @@ for i in range(len(df)):
 
         if(G.has_edge(df.iloc[i]["location"],df.iloc[j]["location"])):
             G[df.iloc[i]["location"]][df.iloc[j]["location"]]["weight"] = weight1
-        #elif(weight1>0.9):
+        #elif(weight1>0.6):
+        #else:
         #    G.add_edge(df.iloc[i]["location"],df.iloc[j]["location"],weight=weight1)
 
 #For edge weights
@@ -307,7 +308,7 @@ for i in range(len(df)):
 print(G.number_of_nodes())
 print(G.number_of_edges())
 print(G.nodes(data=True))
-plt.figure(figsize=(10,7))
+
 
 pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
 #nx.draw(G,pos,node_size=200,with_labels=True)
@@ -318,9 +319,10 @@ for edge, weight in labels.items():
     rounded = {edge:f"{weight:.3f}"}
     labels_round.update(rounded)
 
+plt.figure(figsize=(10,7))
 nx.draw_networkx_nodes(G, pos, node_size=200)
 nx.draw_networkx_edges(G, pos)
-nx.draw_networkx_labels(G, pos)
+nx.draw_networkx_labels(G, pos, font_size=10)
 
 nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
 plt.tight_layout()
@@ -384,10 +386,19 @@ for node in G:
     if node in critical["location"].to_list():
         color_map.append("red")
     else:
-        color_map.append("blue")
+        color_map.append("steelblue")
         
-nx.draw(G,pos, node_color=color_map, with_labels=True)
-nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
+plt.figure(figsize=(10,7))  
+
+nx.draw_networkx_nodes(G, pos, node_size=200,node_color=color_map)
+nx.draw_networkx_edges(G, pos)
+nx.draw_networkx_labels(G, pos, font_size=9)   
+nx.draw_networkx_edge_labels(G,pos,labels_round, font_size=6)
+
+#nx.draw(G,pos, node_color=color_map, with_labels=True)
+#nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
+
+plt.tight_layout()
 plt.savefig("plots_and_fiqures/network2.png")
 plt.show()
 
@@ -451,7 +462,7 @@ list_dfs = []
 list_dfs2 = []
 for key in stations_dataset:
     month = month_avg(stations_dataset[key])
-    y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean()) ).astype(int)
+    y = (month["Maximum gust speed [m/s]"] > (month["Maximum gust speed [m/s]"].mean() + 0.2) ).astype(int)
     month_cp = month.drop(["Maximum wind speed [m/s]"],axis=1)
     df_scaled = scale_func(month_cp)
     risk_score_df_monthly = risk_score_calc(df_scaled,y)
@@ -563,6 +574,8 @@ plt.savefig("plots_and_fiqures/day_wind_vs_score.png")
 df_day_avgs_year = day_avg_year("location",1)
 
 y = (df_day_avgs_year.groupby("day")["Maximum gust speed [m/s]"].max() > 9).astype(int)
+
+#y = (df_day_avgs_year["Wind speed [m/s]"] > (df_day_avgs_year["Wind speed [m/s]"].mean())).astype(int)
 day_cp = df_day_avgs_year.drop(["Maximum wind speed [m/s]"],axis=1)
 df_scaled = scale_func(day_cp)
 risk_score_df_day_year = risk_score_calc(df_scaled,y)
@@ -607,10 +620,6 @@ plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
 #tulos = df_all_wind[df_all_wind["Maximum gust speed [m/s]"] > 25]
 #print(tulos)
 
-#-----------------Task 11-----------------------------------
-
-
-
-
 
 #-----------------Task 12-----------------------------------
+#in file probality
