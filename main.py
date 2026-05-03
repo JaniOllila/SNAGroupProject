@@ -182,7 +182,7 @@ data2 = pd.concat(rolling_features_list)
 single_vector_rolling_derived = pd.concat([data, data2], axis=1)
 single_vector_rolling_derived_cp = single_vector_rolling_derived.loc[:, ~single_vector_rolling_derived.columns.duplicated()]
 
-print(single_vector_rolling_derived)
+#print(single_vector_rolling_derived)
 # drop non-numeric column and save it for later
 ids = single_vector_rolling_derived["Observation station"]
 ids = ids.loc[:, ~ids.columns.duplicated()]
@@ -253,8 +253,6 @@ for _, row in df_combined.iterrows():
     risk_sc=row["risk_score_model"])
     #risk=row["risk_score_model"]
 
-#print(G.nodes["Huikku Hailuoto"])
-
 #calculate distance between nodes and assig edge between them if below treshold
 threshold = 300
 
@@ -305,9 +303,7 @@ for i in range(len(df)):
 #For edge weights
 #for u, v, d in G.edges(data=True):
 #    print(u, v, d["weight"])
-print(G.number_of_nodes())
-print(G.number_of_edges())
-print(G.nodes(data=True))
+
 
 
 pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
@@ -342,15 +338,22 @@ df_degree = pd.DataFrame({
     "degree_value": list(degrees.values())
 })
 
+degree_values = list(degrees.values())
 #plt.hist(degree_values, bins=20)
 #plt.xlabel("Degree")
 #plt.ylabel("Frequency")
+#plt.savefig("plots_and_fiqures/degree_frequency.png")
 #plt.show()
-
+#
 avg_clust = nx.average_clustering(G, weight="weight")
-connect_comp = nx.connected_components(G)
+connect_comp = nx.number_connected_components(G)
+diameter = nx.diameter(G)
+print(connect_comp)
 
-d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp}
+d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp,"diameter":diameter}
+
+df_network_metrics = pd.DataFrame(data=d, index=[0])
+df_network_metrics.to_csv("network_metrics.csv")
 #the data is not in dataframes yet might do it but seem unnessesary
 
 #-----------------Task 10-----------------------------------
@@ -379,6 +382,18 @@ critical = df_analysis[
     (df_analysis["risk_score_model"] > df_analysis["risk_score_model"].mean()) & (df_analysis["betweenness_centrality"] > df_analysis["betweenness_centrality"].mean())
 ]
 
+#for _, row in df_analysis.iterrows():
+#    G[row["location"]]["betweenes"] = row["betweenness_centrality"]
+
+nx.set_node_attributes(G, bet_cent, "betweenness")
+nx.set_node_attributes(G, deg_cent, "degree_centrality")
+nx.set_node_attributes(G, clo_cent, "closeness_centrality")
+
+print(G.number_of_nodes())
+print(G.number_of_edges())
+print(G.nodes(data=True))
+
+
 print("critical locations in network: ")
 print(critical)
 color_map = []
@@ -390,17 +405,19 @@ for node in G:
         
 plt.figure(figsize=(10,7))  
 
+
 nx.draw_networkx_nodes(G, pos, node_size=200,node_color=color_map)
 nx.draw_networkx_edges(G, pos)
 nx.draw_networkx_labels(G, pos, font_size=9)   
 nx.draw_networkx_edge_labels(G,pos,labels_round, font_size=6)
 
-#nx.draw(G,pos, node_color=color_map, with_labels=True)
-#nx.draw_networkx_edge_labels(G, pos, edge_labels=labels_round)
 
 plt.tight_layout()
 plt.savefig("plots_and_fiqures/network2.png")
-plt.show()
+#plt.show()
+
+network_node_metrics = pd.DataFrame.from_dict(dict(G.nodes(data=True)), orient='index')
+network_node_metrics = network_node_metrics.drop(columns=["lat","long"]).to_csv("network_node_metrics.csv")
 
 #-----------------Task 11-----------------------------------
 
@@ -622,4 +639,4 @@ plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
 
 
 #-----------------Task 12-----------------------------------
-#in file probality and supplementary
+#in file probality
