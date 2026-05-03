@@ -276,23 +276,30 @@ for i, row1 in df_combined.iterrows():
 
 #-----------------Task 8-----------------------------------
 
-df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mean",  "Wind speed [m/s]_std",  "Maximum gust speed [m/s]_max",  "rolling_std_3h"]), axis=1)
+df_test = df_combined.drop(df_combined.columns.difference(["Wind speed [m/s]_mean",  "Wind speed [m/s]_std",  "Maximum gust speed [m/s]_max",  "rolling_std_3h","rolling_mean_3h"]), axis=1)
 
 similarity_matrix = cosine_similarity(df_test)
 
-alpha = 0.4
+alpha = 0.7
 
 df = df_combined
 
 for i in range(len(df)):
     for j in range(i+1, len(df)):
-        dist = distlatlon((df.iloc[i]["latitude"], df.iloc[j]["longitude"]),(df.iloc[i]["latitude"], df.iloc[j]["longitude"]))
 
+        dist = distlatlon((df.iloc[i]["latitude"], df.iloc[i]["longitude"]),(df.iloc[j]["latitude"], df.iloc[j]["longitude"]))
+        
         sim = similarity_matrix[i,j]
 
-        dist_score = 1 / (1 + dist)  # normalize distance to calc weight accurately
 
-        weight1 = alpha * sim + (1 - alpha) * dist_score  #weight calc how close physically and how similar based on similarity matrix
+        dist = (dist/20)**1.2 #IF this smaller then dist score up
+        dist_score = (1 / (1 + dist))  # normalize distance to calc weight accurately
+
+
+        if(dist_score == 1): # avoid cases where same coordinates
+            weight1 = 1
+        else:
+            weight1 = (alpha * sim) + ((1) * (dist_score))  #weight calc how close physically and how similar based on similarity matrix
 
         if(G.has_edge(df.iloc[i]["location"],df.iloc[j]["location"])):
             G[df.iloc[i]["location"]][df.iloc[j]["location"]]["weight"] = weight1
@@ -307,6 +314,10 @@ for i in range(len(df)):
 
 
 pos = {row["location"]: (row["longitude"], row["latitude"]) for _, row in df_combined.iterrows()}
+
+pos["Tahkoluoto Offshore tv"] = (21.7833,61.7)
+
+
 #nx.draw(G,pos,node_size=200,with_labels=True)
 labels = nx.get_edge_attributes(G, "weight")
 #, with_labels=True
@@ -414,7 +425,7 @@ nx.draw_networkx_edge_labels(G,pos,labels_round, font_size=6)
 
 plt.tight_layout()
 plt.savefig("plots_and_fiqures/network2.png")
-#plt.show()
+plt.show()
 
 network_node_metrics = pd.DataFrame.from_dict(dict(G.nodes(data=True)), orient='index')
 network_node_metrics = network_node_metrics.drop(columns=["lat","long"]).to_csv("network_node_metrics.csv")
@@ -597,21 +608,18 @@ day_cp = df_day_avgs_year.drop(["Maximum wind speed [m/s]"],axis=1)
 df_scaled = scale_func(day_cp)
 risk_score_df_day_year = risk_score_calc(df_scaled,y)
 
-risk_score_df_day_year["rolling_mean_5"] = (
-    risk_score_df_day_year["risk_score_model"]
-    .rolling(window=5)
+def rolling_mean_func(df,column,window):
+    df["rolling_mean_5"] = (
+    df[column]
+    .rolling(window=window)
     .mean()
-    .reset_index(level=0, drop=True)
-)
+    .reset_index(level=0, drop=True))
 
-df_day_avgs_year["rolling_mean_5"] = (
-    df_day_avgs_year["Wind speed [m/s]"]
-    .rolling(window=20)
-    .mean()
-    .reset_index(level=0, drop=True)
-)
+    return df
 
-#print(df_day_avgs_year.info())
+risk_score_df_day_year = rolling_mean_func(risk_score_df_day_year,"risk_score_model",5)
+df_day_avgs_year = rolling_mean_func(df_day_avgs_year,"Wind speed [m/s]",20)
+
 plt.figure(figsize=(15,5))
 plt.subplot(1,2,1)
 plt.plot(df_day_avgs_year.index, df_day_avgs_year["rolling_mean_5"], label="Mean Wind")
@@ -639,4 +647,4 @@ plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
 
 
 #-----------------Task 12-----------------------------------
-#in file probality
+#in file probality.py
