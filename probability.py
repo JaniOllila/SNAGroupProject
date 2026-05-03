@@ -13,6 +13,7 @@ import supplementary as supp
 
 #-----------------Task 12-----------------------------------
 plt.close("all")
+rng = np.random.default_rng(50)
 
 CUT_IN_THRESHOLD = 3
 CUT_OUT_THRESHOLD = 25
@@ -31,11 +32,11 @@ for file in os.listdir(DIRECTORY):
         gust_speeds.append(speed)
 
 # Probability for turbine failure based on too big of a gust
-k, loc, scale = scipy.stats.weibull_min.fit(gust_speeds, floc=0)
-overall_failure_probability = scipy.stats.weibull_min.cdf(CUT_IN_THRESHOLD, k, loc=0,
-                                scale=scale) + (1 - scipy.stats.weibull_min.cdf(
-                                CUT_OUT_THRESHOLD, k, loc=0, scale=scale))
-#print(overall_failure_probability)
+# The reason it is approximated this way is that we have no data of previous
+# failures and this is the only plausible way of approximating failure that I came up with. 
+k, weibull_loc, scale = scipy.stats.weibull_min.fit(gust_speeds, floc=0)
+overall_failure_probability = 1 - scipy.stats.weibull_min.cdf(CUT_OUT_THRESHOLD,
+                                                              k, loc=0, scale=scale)
 
 risk_scores = pd.read_csv("combined.csv", usecols=["location", "risk_score_model"])
 #Adding failure probability for each turbine
@@ -52,7 +53,7 @@ for _, row in list_of_edges.iterrows():
 propagation_matrix = supp.create_propagation_matrix(edge_lookup, risk_scores)
 
 
-supp.display_heatmap(propagation_matrix, risk_scores, "Propagation Matrix [i → j]",
+supp.display_heatmap(propagation_matrix, risk_scores, "Propagation Matrix [row → column]",
                  save=True, save_path="plots_and_fiqures/propagation_matrix.png", display=True)
 #-----------------Task 12-----------------------------------
 adj_list = {}
@@ -73,9 +74,8 @@ for source, target in edge_lookup.keys():
 results = supp.simulate_propagation(risk_scores, propagation_matrix, adj_list, node_ids)
 
 sizes = [len(s) for s in results]
-#print(f"Mean failures per simulation: {np.mean(sizes):.2f}")
-#print(f"P(zero failures): {np.mean([s == 0 for s in sizes]):.3f}")
-#print(f"P(propagation > 3): {np.mean([s > 3 for s in sizes]):.3f}")
+print(f"Mean failures per simulation: {np.mean(sizes):.2f}")
+print(f"P(propagation > 3): {np.mean([s > 3 for s in sizes]):.3f}")
 
 # Per-turbine failure rate
 all_locations = list(risk_scores["location"])
@@ -92,9 +92,8 @@ heatmap_for_propagation = supp.transition_heatmap(results, risk_scores)
 supp.display_heatmap(heatmap_for_propagation, risk_scores,
                 "Heatmap for propagation simulation [row → column]",
                 save=True, save_path="plots_and_fiqures/simulation_propagation.png", display=True)
-RANDOM_INDEX = int(np.random.randint(10000))
 
-supp.plot_propagation(results[RANDOM_INDEX], risk_scores, G, node_ids)
+supp.plot_propagation(results[rng.integers(10000)], risk_scores, G, node_ids)
 
 #supp.plot_failure_rates(risk_scores, failure_rates)
 
@@ -105,7 +104,7 @@ critical_nodes = supp.get_critical_nodes(G, risk_scores)
 print("High betweenness centrality nodes: ", top_betweenness_nodes)
 print("High risk nodes: ", high_risk_nodes)
 print("Critical nodes: ", critical_nodes)
-print(risk_scores)
+#print(risk_scores)
 
 #-----------------Task 14-----------------------------------
 
@@ -116,6 +115,6 @@ summary_of_strategies = supp.compare_strategies(risk_scores, propagation_matrix,
                                                 node_ids, high_risk_nodes, critical_nodes, edge_lookup)
 
 
-supp.plot_comparison(summary_of_strategies)
+supp.plot_comparison(summary_of_strategies, "plots_and_fiqures/intervention_improvements.png")
 
 #-----------------Task 15-----------------------------------
