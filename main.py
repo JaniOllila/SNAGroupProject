@@ -622,4 +622,4 @@ plt.savefig("plots_and_fiqures/day_wind_vs_score_year.png")
 
 
 #-----------------Task 12-----------------------------------
-#in file probality
+#in file probality and supplementary

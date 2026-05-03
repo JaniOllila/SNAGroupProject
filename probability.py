@@ -44,28 +44,16 @@ risk_scores.insert(2, "failure_probability", risk_scores["risk_score_model"]
 
 list_of_edges = nx.to_pandas_edgelist(G)
 
-#Creating propagation matrix where row is source of failure
-#and column is the target. Values in cells are probabilities for failure propagation.
-propagation_matrix = np.zeros((12,12))
-
 edge_lookup = {}
 for _, row in list_of_edges.iterrows():
     edge_lookup[(row["source"], row["target"])] = row["weight"]
     edge_lookup[(row["target"], row["source"])] = row["weight"]
 
-for row in range(12):
-    for column in range(12):
-        if column==row:
-            continue
-
-        source = risk_scores["location"][row]
-        target = risk_scores["location"][column]
-        weight = np.abs(edge_lookup.get((source, target), 0))
-        propagation_matrix[row,column] = weight * risk_scores["risk_score_model"][column]
+propagation_matrix = supp.create_propagation_matrix(edge_lookup, risk_scores)
 
 
 supp.display_heatmap(propagation_matrix, risk_scores, "Propagation Matrix [i → j]",
-                 save=True, save_path="plots_and_fiqures/propagation_matrix.png")
+                 save=True, save_path="plots_and_fiqures/propagation_matrix.png", display=True)
 #-----------------Task 12-----------------------------------
 adj_list = {}
 node_ids = {}
@@ -103,7 +91,7 @@ heatmap_for_propagation = supp.transition_heatmap(results, risk_scores)
 
 supp.display_heatmap(heatmap_for_propagation, risk_scores,
                 "Heatmap for propagation simulation [row → column]",
-                save=True, save_path="plots_and_fiqures/simulation_propagation.png")
+                save=True, save_path="plots_and_fiqures/simulation_propagation.png", display=True)
 RANDOM_INDEX = int(np.random.randint(10000))
 
 supp.plot_propagation(results[RANDOM_INDEX], risk_scores, G, node_ids)
@@ -111,22 +99,21 @@ supp.plot_propagation(results[RANDOM_INDEX], risk_scores, G, node_ids)
 #supp.plot_failure_rates(risk_scores, failure_rates)
 
 #-----------------Task 14-----------------------------------
-betweenness_centrality = nx.betweenness_centrality(G)
-#print(betweenness_centrality)
+top_betweenness_nodes = supp.get_top_betweenness_cetrality(G)
+high_risk_nodes = supp.get_top_risk_nodes(risk_scores)
+critical_nodes = supp.get_critical_nodes(G, risk_scores)
+print("High betweenness centrality nodes: ", top_betweenness_nodes)
+print("High risk nodes: ", high_risk_nodes)
+print("Critical nodes: ", critical_nodes)
+print(risk_scores)
 
 #-----------------Task 14-----------------------------------
 
 #-----------------Task 15-----------------------------------
 
 
-initiators = supp.get_initiators(results)
-amplifiers = supp.get_amplifiers(results, risk_scores)
-print("Top initiators:", initiators)
-print("Top amplifiers:", amplifiers)
-
-
-summary_of_strategies = supp.compare_strategies(risk_scores, propagation_matrix, adj_list, 
-                                                node_ids, initiators, amplifiers,)
+summary_of_strategies = supp.compare_strategies(risk_scores, propagation_matrix, adj_list,
+                                                node_ids, high_risk_nodes, critical_nodes, edge_lookup)
 
 
 supp.plot_comparison(summary_of_strategies)

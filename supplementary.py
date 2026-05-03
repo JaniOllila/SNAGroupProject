@@ -5,10 +5,33 @@ This is a Module for functions in task 12, 13, 14, 15
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+import pandas as pd
 from main import pos
 
+def create_propagation_matrix(edge_lookup, risk_score):
+    """
+    Function for creating propagation matrix where row is source of failure
+    and column is the target. Values in cells are probabilities for failure propagation.
 
-def display_heatmap(matrix, risk_score, title, save=False, save_path=None):
+    Parameters
+
+    """
+    size = risk_score["location"].size
+    prop_matrix = np.zeros((size,size))
+
+    for row in range(size):
+        for column in range(size):
+            if column==row:
+                continue
+
+            source = risk_score["location"][row]
+            target = risk_score["location"][column]
+            weight = np.abs(edge_lookup.get((source, target), 0))
+            prop_matrix[row,column] = weight * risk_score["risk_score_model"][column]
+    
+    return prop_matrix
+
+def display_heatmap(matrix, risk_score, title, save=False, save_path=None, display=False):
     """
     Function for displaying 12 by 12 heatmap
 
@@ -18,8 +41,9 @@ def display_heatmap(matrix, risk_score, title, save=False, save_path=None):
         title (string): Title of figure
         save (boolean): Save picture or no
         save_path (string): Path to save picture
+        display (boolean): wheter or not to diplay heatmap
     """
-    _, ax = plt.subplots(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(matrix, cmap="YlOrRd")
 
     plt.colorbar(im, ax=ax)
@@ -38,8 +62,10 @@ def display_heatmap(matrix, risk_score, title, save=False, save_path=None):
     plt.tight_layout()
     if save and save_path is not None:
         plt.savefig(save_path)
-
-    plt.show()
+    
+    if display:
+        plt.show()
+        
 
 def one_simulation(queue_propagation, risk_score, failed, adjacency_list, prop_matrix,
                    node_id, queue_independent=None, propagation=True):
@@ -157,12 +183,13 @@ def plot_failure_rates(risk_score, failure_rate):
         failure_rate (dict): Dictionary of failure rates 
 
     """
+    plt.clf()
     locations = risk_score["location"].values
 
     # Sort by failure rate
     sorted_idx = np.argsort(failure_rate)[::-1]
 
-    _, ax = plt.subplots(figsize=(10, 5))
+    fig, ax = plt.subplots(figsize=(10, 5))
     ax.bar(range(len(locations)),
                   [failure_rate[i] for i in sorted_idx],
                   color="steelblue")
@@ -174,6 +201,7 @@ def plot_failure_rates(risk_score, failure_rate):
     ax.legend()
     plt.tight_layout()
     plt.show()
+    
 
 def transition_heatmap(result_list, risk_score):
     """
@@ -221,7 +249,7 @@ def count_subsequent_indexes(result_list, preceding, subsequent):
 
     return count
 
-def apply_intervention(risk_score, prop_matrix, strategy, node_id, targets=None, factor=0.5):
+def apply_intervention(risk_score, prop_matrix, strategy, node_id, edge_lookup, targets=None, factor=0.5):
     """
     Function for applying one of three tactics to turbine-network.
     Prioritizing monitoring affects failure probability of target nodes.
@@ -238,11 +266,14 @@ def apply_intervention(risk_score, prop_matrix, strategy, node_id, targets=None,
     """
     risk_copy = risk_score.copy()
     prop_matrix_copy = prop_matrix.copy()
-    
+
     if strategy == "monitor":
         for target in targets:
             idx = node_id[target]
             risk_copy["failure_probability"][idx] *= factor
+
+        prop_matrix_copy = create_propagation_matrix(edge_lookup, risk_copy)
+
 
     elif strategy == "reinforce_edges":
         for target in targets:
@@ -260,27 +291,45 @@ def apply_intervention(risk_score, prop_matrix, strategy, node_id, targets=None,
 
     return risk_copy, prop_matrix_copy
 
-def get_initiators(result_list, top_n=3):
-    first_failures = [s[0] for s in result_list if len(s) > 0]
-    unique, counts = np.unique(first_failures, return_counts=True)
-    sorted_idx = np.argsort(counts)[::-1]
-    return unique[sorted_idx][:top_n]
+
+def get_top_betweenness_cetrality(G, top_n=3):
+    betweenness_centrality = nx.betweenness_centrality(G)
+    return sorted(betweenness_centrality, key=betweenness_centrality.get, reverse=True)[:top_n]
+
+def get_top_risk_nodes(risk_score, top_n=3):
+    risk_copy = risk_score.sort_values(by=["risk_score_model"], ascending=False)
+    sorted_locations = list(risk_copy["location"])
+    return sorted_locations[:top_n]
+
+def get_critical_nodes(G, risk_score):
+    bet_cent = nx.betweenness_centrality(G, weight="weight")
+    df_centrality = pd.DataFrame({
+        "location": list(bet_cent.keys()),
+        "betweenness_centrality": list(bet_cent.values())
+    })
+
+    df_ranked = df_centrality.sort_values(by="betweenness_centrality", ascending=False)
+
+    df_analysis = df_centrality.merge(risk_score[["location","risk_score_model"]],on="location")
+
+    df_analysis.sort_values(by=["risk_score_model", "betweenness_centrality"],ascending=False)
+
+    #These nodes have high risk score and also important node in network this might change if edge weights are recalc or changed 
+    critical = df_analysis[
+        (df_analysis["risk_score_model"] > df_analysis["risk_score_model"].mean()) & (df_analysis["betweenness_centrality"] > df_analysis["betweenness_centrality"].mean())
+    ]
+    return list(critical["location"])[:3]
 
 
-def get_amplifiers(result_list, risk_score):
-    locations = risk_score["location"].values
-    rates = {loc: np.mean([loc in s for s in result_list]) for loc in locations}
-    return sorted(rates, key=rates.get, reverse=True)[:3]
-
-def compare_strategies(risk_score, prop_matrix, adjacency_list, node_id, initiators, amplifiers, n_simulations=10000):
+def compare_strategies(risk_score, prop_matrix, adjacency_list, node_id, risk_nodes, critical_nodes, edge_lookup, n_simulations=10000):
     strategies = {
         "baseline": (risk_score, prop_matrix),
-        "monitor_initiators": apply_intervention(
-            risk_score, prop_matrix, "monitor", node_id, targets=initiators, factor=0.5),
-        "reinforce_amplifiers": apply_intervention(
-            risk_score, prop_matrix, "reinforce_edges", node_id, targets=amplifiers, factor=0.5),
+        "monitor_high_risk_nodes": apply_intervention(
+            risk_score, prop_matrix, "monitor", node_id, edge_lookup, targets=risk_nodes, factor=0.5),
+        "reinforce_critical_nodes": apply_intervention(
+            risk_score, prop_matrix, "reinforce_edges", node_id, edge_lookup, targets=critical_nodes, factor=0.5),
         "isolate_worst": apply_intervention(
-            risk_score, prop_matrix, "isolate", node_id, targets=initiators[:1]),
+            risk_score, prop_matrix, "isolate", node_id, edge_lookup, targets=risk_nodes[:1]),
     }
     summary = {}
     for name, (rs, pm) in strategies.items():
@@ -300,7 +349,7 @@ def plot_comparison(summary):
     metrics = ["mean_failures", "p_zero_failures", "p_many_failures"]
     labels = ["Mean Failures", "P(Zero Failures)", "P(Failures > 3)"]
 
-    _, axes = plt.subplots(1, 3, figsize=(14, 5))
+    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
 
     for ax, metric, label in zip(axes, metrics, labels):
         baseline_value = summary["baseline"][metric]
@@ -317,3 +366,4 @@ def plot_comparison(summary):
     plt.suptitle("Comparison of strategies (improvements based on baseline)", fontsize=14)
     plt.tight_layout()
     plt.show()
+
