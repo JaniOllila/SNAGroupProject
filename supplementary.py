@@ -26,7 +26,9 @@ def create_propagation_matrix(edge_lookup, risk_score):
 
             source = risk_score["location"][row]
             target = risk_score["location"][column]
-            weight = np.abs(edge_lookup.get((source, target), 0))
+            weight = edge_lookup.get((source, target), 0)
+            if weight != 0:
+                weight = (weight + 1) / 2
             prop_matrix[row,column] = weight * risk_score["risk_score_model"][column]
     
     return prop_matrix
@@ -285,7 +287,6 @@ def apply_intervention(risk_score, prop_matrix, strategy, node_id, edge_lookup, 
             risk_copy.loc[risk_copy["location"] == target, "risk_score_model"] *= factor
 
         prop_matrix_copy = create_propagation_matrix(edge_lookup, risk_copy)
-        display_heatmap(prop_matrix_copy, risk_score, "MOI", display=True)
 
 
     elif strategy == "reinforce_edges":
