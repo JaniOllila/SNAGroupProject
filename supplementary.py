@@ -65,12 +65,17 @@ def display_heatmap(matrix, risk_score, title, save=False, save_path=None, displ
     
     if display:
         plt.show()
-        
+
+def get_random_choice(risk_score):
+    sum_of_risk_scores = sum(risk_score["risk_score_model"])
+    probabilities = [loc / sum_of_risk_scores for loc in risk_score["risk_score_model"]]
+    return np.random.choice(list(risk_score["location"]), p=probabilities)
+
 
 def one_simulation(queue_propagation, risk_score, failed, adjacency_list, prop_matrix,
                    node_id, queue_independent=None, propagation=True):
     """
-    Function for on simulation. One simulation tries if turbine fails based on probability. 
+    Function for one simulation. One simulation tries if turbine fails based on probability. 
     If catches failure in a turbine, add that turbine to failed list and add adjacent nodes
     to propagation queue. 
 
@@ -98,6 +103,7 @@ def one_simulation(queue_propagation, risk_score, failed, adjacency_list, prop_m
         for node in adjacency_list[test]:
             if node not in failed:
                 queue_propagation.append((test, node))
+
         return
 
 
@@ -142,6 +148,14 @@ def simulate_propagation(risk_score, prop_matrix, adjacency_list, node_id, n_sim
 
             one_simulation(queue_propagation, risk_score, failed, adjacency_list,
                            prop_matrix, node_id, queue_independent, propagation=False)
+            
+            #Making sure that there is at least one failure
+            if len(queue_independent) == 0 and len(failed) == 0:
+                random_choice = get_random_choice(risk_score)
+                failed.append(random_choice)
+                for node in adjacency_list[random_choice]:
+                    if node not in failed:
+                        queue_propagation.append((random_choice, node))
 
         sets.append(failed)
 
@@ -198,7 +212,6 @@ def plot_failure_rates(risk_score, failure_rate):
     ax.set_xticklabels([locations[i] for i in sorted_idx], rotation=45, ha="right")
     ax.set_ylabel("Failure Rate")
     ax.set_title("Per-Turbine Failure Rate Across Simulations")
-    ax.legend()
     plt.tight_layout()
     plt.show()
     
@@ -269,10 +282,10 @@ def apply_intervention(risk_score, prop_matrix, strategy, node_id, edge_lookup, 
 
     if strategy == "monitor":
         for target in targets:
-            idx = node_id[target]
-            risk_copy["failure_probability"][idx] *= factor
+            risk_copy.loc[risk_copy["location"] == target, "risk_score_model"] *= factor
 
         prop_matrix_copy = create_propagation_matrix(edge_lookup, risk_copy)
+        display_heatmap(prop_matrix_copy, risk_score, "MOI", display=True)
 
 
     elif strategy == "reinforce_edges":
@@ -286,7 +299,7 @@ def apply_intervention(risk_score, prop_matrix, strategy, node_id, edge_lookup, 
             idx = node_id[target]
             prop_matrix_copy[idx, :] = 0
             prop_matrix_copy[:, idx] = 0
-            risk_copy["failure_probability"][idx] = 0
+            risk_copy.loc[risk_copy["location"] == target, "failure_probability"] = 0
 
 
     return risk_copy, prop_matrix_copy
@@ -308,7 +321,7 @@ def get_critical_nodes(G, risk_score):
         "betweenness_centrality": list(bet_cent.values())
     })
 
-    df_ranked = df_centrality.sort_values(by="betweenness_centrality", ascending=False)
+    #df_ranked = df_centrality.sort_values(by="betweenness_centrality", ascending=False)
 
     df_analysis = df_centrality.merge(risk_score[["location","risk_score_model"]],on="location")
 
@@ -337,17 +350,18 @@ def compare_strategies(risk_score, prop_matrix, adjacency_list, node_id, risk_no
         sizes = [len(s) for s in res]
         summary[name] = {
             "mean_failures": np.mean(sizes),
-            "p_zero_failures": np.mean([s == 0 for s in sizes]),
-            "p_many_failures": np.mean([s > 3 for s in sizes]),
+            "p_zero_propagations": np.mean([s != 1 for s in sizes]),
+            "p_many_failures": np.mean([s > 4 for s in sizes]),
             "results": res
         }
-    
+
     return summary
 
-def plot_comparison(summary):
+
+def plot_comparison(summary, save_path):
     strategies = [s for s in summary if s != "baseline"]
-    metrics = ["mean_failures", "p_zero_failures", "p_many_failures"]
-    labels = ["Mean Failures", "P(Zero Failures)", "P(Failures > 3)"]
+    metrics = ["mean_failures", "p_zero_propagations", "p_many_failures"]
+    labels = ["Mean Failures", "P(Zero Propagations)", "P(Failures > 4)"]
 
     fig, axes = plt.subplots(1, 3, figsize=(14, 5))
 
@@ -365,5 +379,6 @@ def plot_comparison(summary):
 
     plt.suptitle("Comparison of strategies (improvements based on baseline)", fontsize=14)
     plt.tight_layout()
+    plt.savefig(save_path)
     plt.show()
 
