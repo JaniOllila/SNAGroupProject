@@ -361,7 +361,7 @@ connect_comp = nx.number_connected_components(G)
 diameter = nx.diameter(G)
 print(connect_comp)
 
-d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp,"diameter":diameter}
+d = {"avg_clust":avg_clust,"number_of_con_comp":connect_comp,"diameter":diameter,"edges":G.number_of_edges(),"nodes":G.number_of_nodes()}
 
 df_network_metrics = pd.DataFrame(data=d, index=[0])
 df_network_metrics.to_csv("network_metrics.csv")
