@@ -13,7 +13,9 @@ def create_propagation_matrix(edge_lookup, risk_score):
     Function for creating propagation matrix where row is source of failure
     and column is the target. Values in cells are probabilities for failure propagation.
 
-    Parameters
+    Parameters: 
+        edge_lookup (dict): Dictionary of node pair and edge weight
+        risk_score (pd.dataframe): Df which contains turbines and risk scores
 
     """
     size = risk_score["location"].size
@@ -45,7 +47,7 @@ def display_heatmap(matrix, risk_score, title, save=False, save_path=None, displ
         save_path (string): Path to save picture
         display (boolean): wheter or not to diplay heatmap
     """
-    fig, ax = plt.subplots(figsize=(8, 6))
+    _, ax = plt.subplots(figsize=(8, 6))
     im = ax.imshow(matrix, cmap="YlOrRd")
 
     plt.colorbar(im, ax=ax)
@@ -163,7 +165,7 @@ def simulate_propagation(risk_score, prop_matrix, adjacency_list, node_id, n_sim
 
     return sets
 
-def plot_propagation(failed, risk_score, G, node_id, title="Propagation Simulation"):
+def plot_propagation(failed, risk_score, G, node_id, save_path, title="Propagation Simulation"):
     """
     Function for plotting propagation. Displays failed nodes in red and
     others in blue. Also nodes that have higher risk score are displayed bigger.
@@ -173,6 +175,7 @@ def plot_propagation(failed, risk_score, G, node_id, title="Propagation Simulati
         risk_score (pd.dataframe): Dataframe which contains turbines and risk scores
         edgelist (pd.edgelist): Edgelist of graph of turbines
         node_id (dict): Contains node ID for every turbine based on turbine location
+        save_path (string): Path to save picture
         title (string): Title of figure
 
     """
@@ -188,33 +191,36 @@ def plot_propagation(failed, risk_score, G, node_id, title="Propagation Simulati
 
     plt.title(title)
     plt.axis("off")
+    plt.savefig(save_path)
     plt.show()
 
-def plot_failure_rates(risk_score, failure_rate):
+def plot_failure_rates(risk_score, failure_rate, save_path):
     """
     Function for plotting simulated probability of failure for each turbines
 
     Parameters: 
         risk_score (pd.dataframe): Df which contains turbines and risk scores
         failure_rate (dict): Dictionary of failure rates 
+        save_path (string): Path to save picture
 
     """
-    plt.clf()
-    locations = risk_score["location"].values
+    locations = list(risk_score["location"].values)
 
     # Sort by failure rate
-    sorted_idx = np.argsort(failure_rate)[::-1]
+    list_of_values = list(failure_rate.values())
+    sorted_idx = np.argsort(list_of_values)[::-1]
 
     fig, ax = plt.subplots(figsize=(10, 5))
     ax.bar(range(len(locations)),
-                  [failure_rate[i] for i in sorted_idx],
+                  [list_of_values[i] for i in sorted_idx],
                   color="steelblue")
 
     ax.set_xticks(range(len(locations)))
     ax.set_xticklabels([locations[i] for i in sorted_idx], rotation=45, ha="right")
     ax.set_ylabel("Failure Rate")
-    ax.set_title("Per-Turbine Failure Rate Across Simulations")
+    ax.set_title("Per-Turbine Failure Rate Across The Simulation")
     plt.tight_layout()
+    plt.savefig(save_path)
     plt.show()
     
 
@@ -307,35 +313,78 @@ def apply_intervention(risk_score, prop_matrix, strategy, node_id, edge_lookup, 
 
 
 def get_top_betweenness_cetrality(G, top_n=3):
+    """
+    Function for finding the top n nodes in betweenness centrality of the given network
+
+    Parameters: 
+        G (nx.graph): Given network
+        top_n (int): Amount of wanted top nodes
+
+    """
     betweenness_centrality = nx.betweenness_centrality(G)
     return sorted(betweenness_centrality, key=betweenness_centrality.get, reverse=True)[:top_n]
 
 def get_top_risk_nodes(risk_score, top_n=3):
+    """
+    Function for finding the top n node in risk score of the given network
+
+    Parameters:
+        risk_score (pd.dataframe): Df which contains turbines and risk scores
+        top_n (int): Amount of wanted top nodes
+
+    """
+
     risk_copy = risk_score.sort_values(by=["risk_score_model"], ascending=False)
     sorted_locations = list(risk_copy["location"])
     return sorted_locations[:top_n]
 
-def get_critical_nodes(G, risk_score):
+def get_critical_nodes(G, risk_score, top_n=3):
+    """
+    Function for finding the top n most critical nodes in the given network
+
+    Parameters:
+        G (nx.graph): Given network
+        risk_score (pd.dataframe): Df which contains turbines and risk scores
+        top_n (int): Amount of wanted top nodes    
+
+    """
+
     bet_cent = nx.betweenness_centrality(G, weight="weight")
     df_centrality = pd.DataFrame({
         "location": list(bet_cent.keys()),
         "betweenness_centrality": list(bet_cent.values())
     })
 
-    #df_ranked = df_centrality.sort_values(by="betweenness_centrality", ascending=False)
-
     df_analysis = df_centrality.merge(risk_score[["location","risk_score_model"]],on="location")
 
     df_analysis.sort_values(by=["risk_score_model", "betweenness_centrality"],ascending=False)
 
-    #These nodes have high risk score and also important node in network this might change if edge weights are recalc or changed 
     critical = df_analysis[
         (df_analysis["risk_score_model"] > df_analysis["risk_score_model"].mean()) & (df_analysis["betweenness_centrality"] > df_analysis["betweenness_centrality"].mean())
     ]
-    return list(critical["location"])[:3]
+    return list(critical["location"])[:top_n]
 
 
 def compare_strategies(risk_score, prop_matrix, adjacency_list, node_id, risk_nodes, critical_nodes, edge_lookup, n_simulations=10000):
+    """
+    Function for comparing three different strategies for failure propagation improvement (
+    Increasing monitoring, reinforcing connections around critical nodes and
+    isolating the most risk-prone nodes). Returns a summary of the effects of the strategies. The
+    summary includes improvements on mean failures, probability of having zero propagations, 
+    probability of having multiple failures. 
+
+    Parameters: 
+        risk_score (pd.dataframe): Df which contains turbines and risk scores
+        prop_matrix (np.matrix): Matrix which contains propagation probabilities
+        adjacency_list (dict): Adjacent nodes for each node
+        node_id (dict): Contains node ID for every turbine based on turbine location
+        risk_nodes (list): List of nodes that are the most risk-prone
+        critical_nodes (list): List of nodes that are the most critical ones 
+        edge_lookup (dict): Dictionary of node pair and edge weight
+        n_simulations (int): Number of simulations
+
+    """
+
     strategies = {
         "baseline": (risk_score, prop_matrix),
         "monitor_high_risk_nodes": apply_intervention(
@@ -360,11 +409,20 @@ def compare_strategies(risk_score, prop_matrix, adjacency_list, node_id, risk_no
 
 
 def plot_comparison(summary, save_path):
+    """
+    Function for plotting the improvements. 
+
+    Parameters: 
+        summary (dict): Dictionary that includes summaries of improvement for each tactic
+        save_path (string): Path to save picture
+
+    """
+
     strategies = [s for s in summary if s != "baseline"]
     metrics = ["mean_failures", "p_zero_propagations", "p_many_failures"]
     labels = ["Mean Failures", "P(Zero Propagations)", "P(Failures > 4)"]
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 5))
+    _, axes = plt.subplots(1, 3, figsize=(14, 5))
 
     for ax, metric, label in zip(axes, metrics, labels):
         baseline_value = summary["baseline"][metric]
@@ -382,4 +440,3 @@ def plot_comparison(summary, save_path):
     plt.tight_layout()
     plt.savefig(save_path)
     plt.show()
-
